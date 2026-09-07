@@ -277,6 +277,14 @@ h1:hover {
 	border-radius: 10px;
 }
 
+.project-image {
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+	border-radius: 10px;
+}
+
 header {
 	background-color: var(--paper);
 	border: var(--line) solid 2px;
