@@ -7,8 +7,8 @@
 :root {
 	--ink: #1c1917;
 	--paper: #faf6f0;
-	--accent: #d95d39;
-	--accent-dark: #a8442a;
+	--accent: #219ebc;
+	--accent-dark: #023e8a;
 	--line: #e3d9c9;
 	--text-muted: #6b6459;
 	--radius: 4px;
@@ -75,7 +75,7 @@ h1:hover {
 }
 
 .projects {
-	padding: 4.5rem 10rem 5rem;
+	padding: 4.5rem 8rem 5rem;
 }
 
 .hero-grid {
@@ -190,28 +190,15 @@ h1:hover {
 	border-top: 1px solid var(--line);
 }
 
-@media (max-width: 600px) {
-	.hero-grid {
-		grid-template-columns: 1fr;
-		grid-template-areas:
-			"identity"
-			"photo"
-			"details";
-	}
-
-	.hero-photo {
-		max-width: 220px;
-	}
-
-	.social-links {
-		justify-content: flex-start;
-	}
-}
-
 /* Project Styles */
 .projects > h2 {
 	font-size: 4rem;
 	text-align: center;
+	margin-bottom: 10px;
+	font-family:
+		"Space Grotesk",
+		-apple-system,
+		sans-serif;
 }
 
 #project-grid {
@@ -255,14 +242,6 @@ h1:hover {
 	text-align: center;
 }
 
-.projects > h2 {
-	margin-bottom: 10px;
-	font-family:
-		"Space Grotesk",
-		-apple-system,
-		sans-serif;
-}
-
 .project-button > a {
 	width: full;
 	height: full;
@@ -272,8 +251,16 @@ h1:hover {
 }
 
 .project-button {
-	background-color: #a8442a;
+	background-color: var(--accent-dark);
 	padding: 10px;
+	border-radius: 10px;
+}
+
+.project-image {
+	width: 100%;
+	height: auto;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
 	border-radius: 10px;
 }
 
@@ -284,4 +271,35 @@ header {
 	position: sticky;
 	top: 0;
 	z-index: 100;
+}
+
+@media (max-width: 600px) {
+	.hero-grid {
+		grid-template-columns: 1fr;
+		grid-template-areas:
+			"identity"
+			"photo"
+			"details";
+	}
+
+	.hero-photo {
+		max-width: 220px;
+	}
+
+	.social-links {
+		justify-content: flex-start;
+	}
+}
+
+@media (max-width: 960px) {
+	.projects {
+		padding: 4.5rem 3rem 5rem;
+	}
+
+	#project-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		flex-wrap: wrap;
+		gap: 16px;
+	}
 }
