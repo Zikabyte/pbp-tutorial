@@ -27,6 +27,12 @@ h1,
 		"Space Grotesk",
 		-apple-system,
 		sans-serif;
+
+	transition: all 0.1s ease-in;
+}
+
+h1:hover {
+	transform: scale(1.01);
 }
 
 .container {
@@ -66,6 +72,10 @@ h1,
 
 .hero {
 	padding: 4.5rem 0 5rem;
+}
+
+.projects {
+	padding: 4.5rem 10rem 5rem;
 }
 
 .hero-grid {
@@ -196,4 +206,82 @@ h1,
 	.social-links {
 		justify-content: flex-start;
 	}
+}
+
+/* Project Styles */
+.projects > h2 {
+	font-size: 4rem;
+	text-align: center;
+}
+
+#project-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.project-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem 2rem;
+	background-color: var(--accent);
+	border: var(--accent-dark) solid 4px;
+	color: white;
+	border-radius: 16px;
+	transition: all 200ms ease-in;
+}
+
+.project-item:hover {
+	transform: scale(1.02);
+	box-shadow: 0px 0px 2px 1px rgba(0, 0, 0, 0.373);
+}
+
+.project-item > * {
+	margin: 10px 0;
+}
+
+.project-item > h3 {
+	font-family:
+		"Space Grotesk",
+		-apple-system,
+		sans-serif;
+	font-size: 32px;
+}
+
+.project-item > p {
+	text-align: center;
+}
+
+.projects > h2 {
+	margin-bottom: 10px;
+	font-family:
+		"Space Grotesk",
+		-apple-system,
+		sans-serif;
+}
+
+.project-button > a {
+	width: full;
+	height: full;
+	padding: 10px;
+	text-decoration: none;
+	color: white;
+}
+
+.project-button {
+	background-color: #a8442a;
+	padding: 10px;
+	border-radius: 10px;
+}
+
+header {
+	background-color: var(--paper);
+	border: var(--line) solid 2px;
+	box-shadow: #1c191724 0px 1px 5px 5px;
+	position: sticky;
+	top: 0;
+	z-index: 100;
 }
