@@ -1,138 +1,117 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %} {% block title %} Zikafolio - Home {% endblock %} {%
+block content %}
+<section class="hero" id="profile">
+	<div class="container hero-grid">
+		<div class="hero-identity">
+			<p class="hero-kicker">Computer Science &middot; Universitas Indonesia</p>
+			<h1>{{ name }}</h1>
+		</div>
+		<div class="hero-photo">
+			<div class="photo-block"></div>
+			<img
+				class="avatar"
+				src="/static/img/profile-picture.jpeg"
+				alt="Photo of Zidane"
+			/>
+		</div>
+		<div class="hero-details">
+			<p class="bio">{{ bio }}</p>
+			<dl class="meta-list">
+				<div class="meta-row">
+					<dt>NPM</dt>
+					<dd>{{ npm }}</dd>
+				</div>
+				<div class="meta-row">
+					<dt>Program</dt>
+					<dd>{{ study_program }}</dd>
+				</div>
+			</dl>
+			<div class="social-links">
+				<a href="https://github.com/Zikabyte" class="social-link">GitHub</a>
+				<a
+					href="https://www.linkedin.com/in/mohammad-zidane-kurnianto-651621378/"
+					class="social-link"
+					>LinkedIn</a
+				>
+				<a href="mailto:mzidanek@ristek.cs.ui.ac.id" class="social-link"
+					>Email</a
+				>
+			</div>
+		</div>
+	</div>
+</section>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zidane - Portfolio</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
+<section class="projects" id="projects">
+	<h2>My projects</h2>
 
-<body>
-    <header class="site-header">
-        <div class="container">
-            <a href="#profile" class="brand">{{ name }} - Portfolio</a>
-            <nav>
-                <a href="{% url 'main:show_main' %}">Profile</a>
-                <a href="{% url 'main:show_experience' %}">Experience</a>
-                <a href="{% url 'main:show_project' %}">Project</a>
-            </nav>
-        </div>
-    </header>
-
-    <main>
-        <section class="hero" id="profile">
-            <div class="container hero-grid">
-                <div class="hero-identity">
-                    <p class="hero-kicker">Computer Science &middot; Universitas Indonesia</p>
-                    <h1>{{ name }}</h1>
-                </div>
-                <div class="hero-photo">
-                    <div class="photo-block"></div>
-                    <img class="avatar" src="/static/img/profile-picture.jpeg" alt="Photo of Zidane">
-                </div>
-                <div class="hero-details">
-                    <p class="bio">
-                        {{ bio }}
-                    </p>
-                    <dl class="meta-list">
-                        <div class="meta-row">
-                            <dt>NPM</dt>
-                            <dd>{{ npm }}</dd>
-                        </div>
-                        <div class="meta-row">
-                            <dt>Program</dt>
-                            <dd>{{ study_program }}</dd>
-                        </div>
-                    </dl>
-                    <div class="social-links">
-                        <a href="https://github.com/Zikabyte" class="social-link">GitHub</a>
-                        <a href="https://www.linkedin.com/in/mohammad-zidane-kurnianto-651621378/"
-                            class="social-link">LinkedIn</a>
-                        <a href="mailto:mzidanek@ristek.cs.ui.ac.id" class="social-link">Email</a>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="projects" id="projects">
-            <h2>
-                My projects
-            </h2>
-
-            <div id="project-grid">
-                <article class="project-item">
-                    <h3>
-                        FisioMate
-                    </h3>
-                    <img src="/static/img/project-fisiomate.jpg" class="project-image" width="300" />
-                    <p>
-                        Ekosistem Remote Therapeutic Monitoring (RTM) berbasis AI yang menggabungkan computer vision di
-                        aplikasi mobile pasien dengan dashboard web terpusat untuk fisioterapis.
-                    </p>
-                    <div class="project-button">
-                        <a href="https://github.com/FisioMate">
-                            <span>Check It Out!</span>
-                        </a>
-                    </div>
-                </article>
-                <article class="project-item">
-                    <h3>
-                        GARDA NLP
-                    </h3>
-                    <img src="/static/img/project-garda.jpg" class="project-image" width="300" />
-                    <p>
-                        Sistem deteksi dini untuk pola pendekatan predator daring dalam teks obrolan, yang didukung oleh
-                        model NLP berbasis SetFit.
-                    </p>
-                    <div class="project-button">
-                        <a href="https://github.com/Zikabyte/garda-nlp">
-                            <span>Check It Out!</span>
-                        </a>
-                    </div>
-                </article>
-                <article class="project-item">
-                    <h3>
-                        Samudera
-                    </h3>
-                    <img src="/static/img/project-samudera.png" class="project-image" width="300" />
-                    <p>
-                        Aplikasi mobile berbasis Flutter yang membantu pengguna untuk selalu mendapatkan informasi
-                        terkini mengenai data pasar
-                        saham dan wawasan perusahaan dengan memanfaatkan API AlphaVantage.
-                    </p>
-                    <div class="project-button">
-                        <a href="https://github.com/Zikabyte/samudera">
-                            <span>Check It Out!</span>
-                        </a>
-                    </div>
-                </article>
-                <article class="project-item">
-                    <h3>
-                        Zikapedia
-                    </h3>
-                    <img src="/static/img/project-zikapedia.png" class="project-image" width="300" />
-                    <p>
-                        Website portfolio berbasis React yang saya buat saat semester 1.
-                    </p>
-                    <div class="project-button">
-                        <a href="https://github.com/Zikabyte/zikapedia">
-                            <span>Check It Out!</span>
-                        </a>
-                    </div>
-                </article>
-            </div>
-        </section>
-    </main>
-
-    <footer class="site-footer">
-        <div class="container">
-            <p>&copy; 2026 {{ name }}. Fakultas Ilmu Komputer, Universitas Indonesia.</p>
-        </div>
-    </footer>
-</body>
-
-</html>
+	<div id="project-grid">
+		<article class="project-item">
+			<h3>FisioMate</h3>
+			<img
+				src="/static/img/project-fisiomate.jpg"
+				class="project-image"
+				width="300"
+			/>
+			<p>
+				Ekosistem Remote Therapeutic Monitoring (RTM) berbasis AI yang
+				menggabungkan computer vision di aplikasi mobile pasien dengan dashboard
+				web terpusat untuk fisioterapis.
+			</p>
+			<div class="project-button">
+				<a href="https://github.com/FisioMate">
+					<span>Check It Out!</span>
+				</a>
+			</div>
+		</article>
+		<article class="project-item">
+			<h3>GARDA NLP</h3>
+			<img
+				src="/static/img/project-garda.jpg"
+				class="project-image"
+				width="300"
+			/>
+			<p>
+				Sistem deteksi dini untuk pola pendekatan predator daring dalam teks
+				obrolan, yang didukung oleh model NLP berbasis SetFit.
+			</p>
+			<div class="project-button">
+				<a href="https://github.com/Zikabyte/garda-nlp">
+					<span>Check It Out!</span>
+				</a>
+			</div>
+		</article>
+		<article class="project-item">
+			<h3>Samudera</h3>
+			<img
+				src="/static/img/project-samudera.png"
+				class="project-image"
+				width="300"
+			/>
+			<p>
+				Aplikasi mobile berbasis Flutter yang membantu pengguna untuk selalu
+				mendapatkan informasi terkini mengenai data pasar saham dan wawasan
+				perusahaan dengan memanfaatkan API AlphaVantage.
+			</p>
+			<div class="project-button">
+				<a href="https://github.com/Zikabyte/samudera">
+					<span>Check It Out!</span>
+				</a>
+			</div>
+		</article>
+		<article class="project-item">
+			<h3>Zikapedia</h3>
+			<img
+				src="/static/img/project-zikapedia.png"
+				class="project-image"
+				width="300"
+			/>
+			<p>Website portfolio berbasis React yang saya buat saat semester 1.</p>
+			<div class="project-button">
+				<a href="https://github.com/Zikabyte/zikapedia">
+					<span>Check It Out!</span>
+				</a>
+			</div>
+		</article>
+	</div>
+</section>
+{% endblock %}
