@@ -80,4 +80,7 @@ class MainTest(TestCase):
         response = self.client.get(reverse("main:show_project"))
 
         self.assertContains(response, "Belum ada project yang ditambahkan.")
+
+    def test_project_model(self):
+            self.assertEqual(str(self.project), "Zikapedia")
         
