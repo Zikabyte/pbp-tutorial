@@ -11,17 +11,37 @@
 			rel="stylesheet"
 		/>
 		<link rel="stylesheet" href="/static/css/style.css" />
+		<script src="/static/js/theme.js"></script>
 	</head>
 
 	<body>
 		<header class="site-header">
 			<div class="container">
 				<a href="#profile" class="brand">Zikafolio</a>
-				<nav>
-					<a href="{% url 'main:show_main' %}">Profile</a>
-					<a href="{% url 'main:show_experience' %}">Experience</a>
-					<a href="{% url 'main:show_project' %}">Project</a>
-				</nav>
+				<div class="nav-group">
+					<nav>
+						<a href="{% url 'main:show_main' %}">Profile</a>
+						<a href="{% url 'main:show_experience' %}">Experience</a>
+						<a href="{% url 'main:show_project' %}">Project</a>
+					</nav>
+					<button
+						id="theme-toggle"
+						class="theme-toggle"
+						type="button"
+						aria-label="Toggle dark mode"
+					>
+						<img
+							src="/static/icons/dark-mode.svg"
+							alt=""
+							class="theme-icon theme-icon-dark"
+						/>
+						<img
+							src="/static/icons/light-mode.svg"
+							alt=""
+							class="theme-icon theme-icon-light"
+						/>
+					</button>
+				</div>
 			</div>
 		</header>
 

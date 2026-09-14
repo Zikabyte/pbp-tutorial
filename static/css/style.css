@@ -11,7 +11,18 @@
 	--accent-dark: #023e8a;
 	--line: #e3d9c9;
 	--text-muted: #6b6459;
+	--card-bg: #fff;
 	--radius: 4px;
+}
+
+[data-theme="dark"] {
+	--ink: #f2ede4;
+	--paper: #15130f;
+	--accent: #219ebc;
+	--accent-dark: #4cc9f0;
+	--line: #34302a;
+	--text-muted: #a89f8f;
+	--card-bg: #1f1c17;
 }
 
 body {
@@ -19,6 +30,9 @@ body {
 	color: var(--ink);
 	background-color: var(--paper);
 	line-height: 1.6;
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease;
 }
 
 h1,
@@ -59,6 +73,12 @@ h1:hover {
 	text-decoration: none;
 }
 
+.nav-group {
+	display: flex;
+	align-items: center;
+	gap: 1.5rem;
+}
+
 .site-header nav {
 	display: flex;
 	gap: 2rem;
@@ -68,6 +88,41 @@ h1:hover {
 	color: var(--ink);
 	text-decoration: none;
 	font-size: 0.95rem;
+}
+
+.theme-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	font-size: 1rem;
+	line-height: 1;
+	background: none;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	color: var(--ink);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.theme-toggle:hover {
+	background-color: var(--line);
+}
+
+.theme-icon {
+	display: none;
+	width: 1.1rem;
+	height: 1.1rem;
+}
+
+[data-theme="light"] .theme-icon-dark {
+	display: block;
+}
+
+[data-theme="dark"] .theme-icon-light {
+	display: block;
+	filter: invert(1);
 }
 
 .hero {
@@ -271,6 +326,9 @@ header {
 	position: sticky;
 	top: 0;
 	z-index: 100;
+	transition:
+		background-color 0.2s ease,
+		border-color 0.2s ease;
 }
 
 /* Experience Page */
@@ -300,9 +358,10 @@ header {
 
 .experience-card {
 	padding: 1.25rem;
-	background-color: #fff;
+	background-color: var(--card-bg);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
+	transition: background-color 0.2s ease;
 }
 
 .experience-category {

@@ -1,4 +1,5 @@
-from django.test import LiveServerTestCase, TestCase
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from selenium import webdriver
@@ -88,7 +89,7 @@ class MainTest(TestCase):
             self.assertEqual(str(self.project), "Zikapedia")
 
 # ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #
-class NavbarFunctionalTest(LiveServerTestCase):
+class NavbarFunctionalTest(StaticLiveServerTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -113,3 +114,18 @@ class NavbarFunctionalTest(LiveServerTestCase):
 
         self.selenium.find_element(By.LINK_TEXT, "Profile").click()
         self.assertIn(reverse("main:show_main"), self.selenium.current_url)
+
+    def test_dark_mode_toggle(self):
+        self.selenium.get(self.live_server_url)
+        html = self.selenium.find_element(By.TAG_NAME, "html")
+        toggle = self.selenium.find_element(By.ID, "theme-toggle")
+
+        initial_theme = html.get_attribute("data-theme")
+        toggle.click()
+        toggled_theme = html.get_attribute("data-theme")
+
+        self.assertNotEqual(toggled_theme, initial_theme)
+
+        self.selenium.refresh()
+        html = self.selenium.find_element(By.TAG_NAME, "html")
+        self.assertEqual(html.get_attribute("data-theme"), toggled_theme)
