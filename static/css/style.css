@@ -259,30 +259,71 @@ h1:hover {
 #project-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	flex-wrap: wrap;
 	gap: 16px;
+}
+
+#project-grid-preview {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 16px;
+}
+
+#project-grid-preview .project-item p {
+	display: -webkit-box;
+	line-clamp: 3;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.section-heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-bottom: 1.5rem;
+}
+
+.section-heading h2 {
+	font-family:
+		"Space Grotesk",
+		-apple-system,
+		sans-serif;
+	font-size: 1.75rem;
+}
+
+.view-all-projects {
+	color: var(--accent-dark);
+	font-weight: 600;
+	font-size: 0.9rem;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.view-all-projects:hover {
+	text-decoration: underline;
 }
 
 .project-item {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	padding: 2rem 2rem;
-	background-color: var(--accent);
-	border: var(--accent-dark) solid 4px;
-	color: white;
-	border-radius: 16px;
-	transition: all 200ms ease-in;
+	align-items: stretch;
+	background-color: var(--card-bg);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	overflow: hidden;
+	transition: all 0.2s ease;
 }
 
 .project-item:hover {
-	transform: scale(1.02);
-	box-shadow: 0px 0px 2px 1px rgba(0, 0, 0, 0.373);
+	transform: translateY(-4px);
+	border-color: var(--accent);
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
 }
 
 .project-item > * {
-	margin: 10px 0;
+	margin: 0;
 }
 
 .project-item > h3 {
@@ -290,33 +331,43 @@ h1:hover {
 		"Space Grotesk",
 		-apple-system,
 		sans-serif;
-	font-size: 32px;
+	font-size: 1.25rem;
+	color: var(--ink);
+	padding: 1.25rem 1.25rem 0;
 }
 
 .project-item > p {
-	text-align: center;
-}
-
-.project-button > a {
-	width: full;
-	height: full;
-	padding: 10px;
-	text-decoration: none;
-	color: white;
+	color: var(--text-muted);
+	font-size: 0.9rem;
+	text-align: left;
+	padding: 0.5rem 1.25rem 0;
 }
 
 .project-button {
-	background-color: var(--accent-dark);
-	padding: 10px;
-	border-radius: 10px;
+	margin-top: auto;
+	padding: 1.25rem;
+}
+
+.project-button > a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	color: var(--accent-dark);
+	font-weight: 600;
+	font-size: 0.9rem;
+	text-decoration: none;
+}
+
+.project-button > a:hover {
+	text-decoration: underline;
 }
 
 .project-image {
+	order: -1;
 	width: 100%;
 	height: auto;
 	aspect-ratio: 16 / 9;
 	object-fit: cover;
-	border-radius: 10px;
 }
 
 header {
@@ -411,9 +462,6 @@ header {
 	}
 
 	#project-grid {
-		display: grid;
 		grid-template-columns: 1fr;
-		flex-wrap: wrap;
-		gap: 16px;
 	}
 }

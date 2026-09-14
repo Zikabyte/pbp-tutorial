@@ -12,6 +12,7 @@ def show_main(request):
         "bio": (
             "Baik itu membangun kode, maupun merusak kode, saya mempelajari dari keduanya. Saya tertarik dengan segala hal software engineering ddan AI engineering. "
         ),
+        "project_list": Project.objects.all()[:3],
     }
     return render(request, "index.html", context)
 

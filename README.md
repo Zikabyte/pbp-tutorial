@@ -17,3 +17,7 @@ Kelas: F
 #### AI Disclosure: Tugas 1
 
 Tidak menggunakan AI.
+
+### Tugas 2
+
+1.
