@@ -11,7 +11,18 @@
 	--accent-dark: #023e8a;
 	--line: #e3d9c9;
 	--text-muted: #6b6459;
+	--card-bg: #fff;
 	--radius: 4px;
+}
+
+[data-theme="dark"] {
+	--ink: #f2ede4;
+	--paper: #15130f;
+	--accent: #219ebc;
+	--accent-dark: #4cc9f0;
+	--line: #34302a;
+	--text-muted: #a89f8f;
+	--card-bg: #1f1c17;
 }
 
 body {
@@ -19,6 +30,9 @@ body {
 	color: var(--ink);
 	background-color: var(--paper);
 	line-height: 1.6;
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease;
 }
 
 h1,
@@ -59,6 +73,12 @@ h1:hover {
 	text-decoration: none;
 }
 
+.nav-group {
+	display: flex;
+	align-items: center;
+	gap: 1.5rem;
+}
+
 .site-header nav {
 	display: flex;
 	gap: 2rem;
@@ -68,6 +88,41 @@ h1:hover {
 	color: var(--ink);
 	text-decoration: none;
 	font-size: 0.95rem;
+}
+
+.theme-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	font-size: 1rem;
+	line-height: 1;
+	background: none;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	color: var(--ink);
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.theme-toggle:hover {
+	background-color: var(--line);
+}
+
+.theme-icon {
+	display: none;
+	width: 1.1rem;
+	height: 1.1rem;
+}
+
+[data-theme="light"] .theme-icon-dark {
+	display: block;
+}
+
+[data-theme="dark"] .theme-icon-light {
+	display: block;
+	filter: invert(1);
 }
 
 .hero {
@@ -204,30 +259,71 @@ h1:hover {
 #project-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	flex-wrap: wrap;
 	gap: 16px;
+}
+
+#project-grid-preview {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 16px;
+}
+
+#project-grid-preview .project-item p {
+	display: -webkit-box;
+	line-clamp: 3;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.section-heading {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-bottom: 1.5rem;
+}
+
+.section-heading h2 {
+	font-family:
+		"Space Grotesk",
+		-apple-system,
+		sans-serif;
+	font-size: 1.75rem;
+}
+
+.view-all-projects {
+	color: var(--accent-dark);
+	font-weight: 600;
+	font-size: 0.9rem;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.view-all-projects:hover {
+	text-decoration: underline;
 }
 
 .project-item {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	padding: 2rem 2rem;
-	background-color: var(--accent);
-	border: var(--accent-dark) solid 4px;
-	color: white;
-	border-radius: 16px;
-	transition: all 200ms ease-in;
+	align-items: stretch;
+	background-color: var(--card-bg);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	overflow: hidden;
+	transition: all 0.2s ease;
 }
 
 .project-item:hover {
-	transform: scale(1.02);
-	box-shadow: 0px 0px 2px 1px rgba(0, 0, 0, 0.373);
+	transform: translateY(-4px);
+	border-color: var(--accent);
+	box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
 }
 
 .project-item > * {
-	margin: 10px 0;
+	margin: 0;
 }
 
 .project-item > h3 {
@@ -235,33 +331,43 @@ h1:hover {
 		"Space Grotesk",
 		-apple-system,
 		sans-serif;
-	font-size: 32px;
+	font-size: 1.25rem;
+	color: var(--ink);
+	padding: 1.25rem 1.25rem 0;
 }
 
 .project-item > p {
-	text-align: center;
-}
-
-.project-button > a {
-	width: full;
-	height: full;
-	padding: 10px;
-	text-decoration: none;
-	color: white;
+	color: var(--text-muted);
+	font-size: 0.9rem;
+	text-align: left;
+	padding: 0.5rem 1.25rem 0;
 }
 
 .project-button {
-	background-color: var(--accent-dark);
-	padding: 10px;
-	border-radius: 10px;
+	margin-top: auto;
+	padding: 1.25rem;
+}
+
+.project-button > a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	color: var(--accent-dark);
+	font-weight: 600;
+	font-size: 0.9rem;
+	text-decoration: none;
+}
+
+.project-button > a:hover {
+	text-decoration: underline;
 }
 
 .project-image {
+	order: -1;
 	width: 100%;
 	height: auto;
 	aspect-ratio: 16 / 9;
 	object-fit: cover;
-	border-radius: 10px;
 }
 
 header {
@@ -271,6 +377,9 @@ header {
 	position: sticky;
 	top: 0;
 	z-index: 100;
+	transition:
+		background-color 0.2s ease,
+		border-color 0.2s ease;
 }
 
 /* Experience Page */
@@ -300,9 +409,10 @@ header {
 
 .experience-card {
 	padding: 1.25rem;
-	background-color: #fff;
+	background-color: var(--card-bg);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
+	transition: background-color 0.2s ease;
 }
 
 .experience-category {
@@ -352,9 +462,6 @@ header {
 	}
 
 	#project-grid {
-		display: grid;
 		grid-template-columns: 1fr;
-		flex-wrap: wrap;
-		gap: 16px;
 	}
 }

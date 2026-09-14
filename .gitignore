@@ -122,3 +122,6 @@ sftp-config.json
 
 # macOS
 .DS_Store
+
+# etc.
+!logs/*

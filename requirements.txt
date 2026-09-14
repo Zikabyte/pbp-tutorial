@@ -1,7 +1,9 @@
-django==6.0
+django==6.1
 gunicorn
 whitenoise
 psycopg2-binary
 requests
 urllib3
 python-dotenv
+coverage
+selenium

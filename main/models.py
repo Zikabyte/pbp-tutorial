@@ -27,11 +27,11 @@ class Experience(models.Model):
 
 class Project(models.Model):
     PROJECT_CATEGORIES_CHOICES = [
-            ('ai-engineering', 'Internship'),
-            ('mobile-development', 'Research'),
-            ('web-development', 'Volunteer'),
-            ('backend-development', 'Part-Time'),
-            ('general', 'Freelance'),
+            ('ai-engineering', 'AI Engineering'),
+            ('mobile-development', 'Mobile Development'),
+            ('web-development', 'Web Development'),
+            ('backend-development', 'Backend Development'),
+            ('general', 'General'),
         ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
