@@ -1,6 +1,9 @@
-from django.test import TestCase
+from django.test import LiveServerTestCase, TestCase
 from django.urls import reverse
 from django.utils import timezone
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 
 from main.models import Experience, Project
 
@@ -83,4 +86,30 @@ class MainTest(TestCase):
 
     def test_project_model(self):
             self.assertEqual(str(self.project), "Zikapedia")
-        
+
+# ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #
+class NavbarFunctionalTest(LiveServerTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        options = Options()
+        options.add_argument("--headless=new")
+        options.add_argument("--window-size=1920,1080")
+        cls.selenium = webdriver.Chrome(options=options)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.selenium.quit()
+        super().tearDownClass()
+
+    def test_navbar_links_to_all_pages(self):
+        self.selenium.get(self.live_server_url)
+
+        self.selenium.find_element(By.LINK_TEXT, "Experience").click()
+        self.assertIn(reverse("main:show_experience"), self.selenium.current_url)
+
+        self.selenium.find_element(By.LINK_TEXT, "Project").click()
+        self.assertIn(reverse("main:show_project"), self.selenium.current_url)
+
+        self.selenium.find_element(By.LINK_TEXT, "Profile").click()
+        self.assertIn(reverse("main:show_main"), self.selenium.current_url)
