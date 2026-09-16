@@ -2,7 +2,7 @@
 {% block title %}Zikafolio - Home{% endblock %}
 {% block content %}
 <section class="hero" id="profile">
-	<div class="container hero-grid">
+	{% comment %} <div class="container hero-grid">
 		<div class="hero-identity">
 			<p class="hero-kicker">Computer Science &middot; Universitas Indonesia</p>
 			<h1>{{ name }}</h1>
@@ -38,6 +38,54 @@
 					>Email</a
 				>
 			</div>
+		</div>
+	</div> {% endcomment %}
+
+	<h1>
+		No Comment.
+	</h1>
+	<div class="hero-self-image-container">
+		<img src="/static/img/hero-self.png" class="hero-self-image" />
+	</div>
+
+	<div class="hero-credential">
+		<div class="credential-item">
+			<h2>
+				NPM
+			</h2>
+			<span>
+				{{ npm }}
+			</span>
+		</div>
+		<div class="credential-item">
+			<h2>
+				Program
+			</h2>
+			<span>
+				{{ study_program }}
+			</span>
+		</div>
+		<div class="credential-item">
+			<h2>
+				LinkedIn
+			</h2>
+			<a href="https://www.linkedin.com/in/mohammad-zidane-kurnianto-651621378/">
+				Visit
+			</a>
+		</div>
+		<div class="credential-item">
+			<h2>
+				GitHub
+			</h2>
+			<a href="https://github.com/Zikabyte">
+				Visit
+			</a>
+		</div>
+	</div>
+
+	<div class="marquee-container">
+		<div class="marquee-content">
+			Menyesal karena bertindak lebih baik daripada tidak menyesal karena tidak bertindak.
 		</div>
 	</div>
 </section>
