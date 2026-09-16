@@ -2,27 +2,57 @@
 {% block title %}Zikafolio - Project{% endblock %}
 {% block content %}
 <section class="projects" id="projects">
-	<h1>My projects</h1>
+	<div class="container">
+		<p class="section-kicker">Karya yang saya bangun</p>
+		<div class="project-header">
+			<h1>Projects</h1>
+			<a href="{% url 'main:create_project' %}"
+				class="button project-add-button">
+				<span aria-hidden="true">+</span>
+				Tambah Proyek
+			</a>
+		</div>
+
+	<form method="get"
+			action="{% url 'main:show_projects' %}"
+			class="project-search">
+		<input type="search"
+			name="title"
+			value="{{ title_query }}"
+			placeholder="Cari berdasarkan nama proyek"
+			class="project-search__input"
+			aria-label="Cari berdasarkan nama proyek">
+		<button type="submit" class="button">Cari</button>
+	</form>
 
 	<div id="project-grid">
 		{% for project in project_list %}
 		<article class="project-item">
 			<h3>{{ project.name }}</h3>
-			<img
+			{% if project.image_url %}
+				<img
 				src="{{project.image_url}}"
 				alt="mockup of {{project.name}}"
 				class="project-image"
 				width="300"
-			/>
+				/>
+			{% endif %}
 			<p>{{ project.description }}</p>
 			<div class="project-button">
-				<a href="{{ project.project_url }}">
-					<span>Check It Out!</span>
-				</a>
+				{% if project.project_url %}
+					<a href="{{ project.project_url }}">
+						<span>Check It Out!</span>
+					</a>
+				{% endif %}
+				{% include "components/project_delete_modal.html" with project=project %}
 			</div>
 		</article>
 		{% empty %}
-		<p class="empty-state">Belum ada project yang ditambahkan.</p>
+			{% if title_query %}
+				<p class="empty-state">Tidak ada proyek dengan nama tersebut.</p>
+			{% else %}
+				<p class="empty-state">Belum ada proyek yang ditambahkan.</p>
+			{% endif %}
 		{% endfor %}
 	</div>
 </section>

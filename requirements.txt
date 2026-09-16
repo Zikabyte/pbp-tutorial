@@ -1,4 +1,4 @@
-django==6.1
+django
 gunicorn
 whitenoise
 psycopg2-binary
