@@ -59,6 +59,7 @@ MIDDLEWARE = [
 
 CSRF_TRUSTED_ORIGINS = [
     'https://mohammad-zidane51-myportfolio.pws.cs.ui.ac.id',
+    'https://localhost:8000'
 ]
 
 ROOT_URLCONF = 'portfolio.urls'
