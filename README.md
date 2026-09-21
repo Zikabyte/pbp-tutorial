@@ -109,3 +109,25 @@ Melihat hasil portfolio kawan-kawanku yang lain, saya menjadi merasa tidak mau k
    - Komputer dapat parsing JSON jauh lebih cepat dibandingkan parsing XML. Apalagi dengan prominennya framework berbasis Javascript yang merajalela di website modern (e.g. React, Vue, Angular, dsb.), parsing JSON adalah proses native Javascript, sehingga bisa diparse lebih efisien.
    - Lebih sedikit karakter yang digunakan untuk formatting dibanding XML (yang harus menyertakan tag pembuka dan penutup di setiap potongan data), sehingga ukuran JSON lebih ringan dan ukuran payload lebih kecil, alhasil mempercepat transmisi jaringan
 3. Ketika device client fetch endpoint yang mengembalikan sebuah JSON (misalnya `get_projects_json`), data yang diambil dari database melalui Django ORM masih bertipe `QuerySet` (dalam kasus ini, `QuerySet` ini berisi instance dari model `Project`). Karena tipe data `QuerySet` ini sangat kompleks sehingga tidak dikenali oleh JSON (yang hanya memiliki tipe data str, number, boolean, null, array, dan object), instance perlu diproses terlebih dahulu melalui `serializers.serialize("json", Model)` yang mengekstrak field-field yang ada pada model yang ditargetkan menjadi sebuah struktur standar, di mana dalam kasus ini, sebuah JSON. Hasil serialization ini kemudia dibungkus `HttpResponse` dengan `content_type="application/json"` dan dikirim ke device client. Jadi, proses serialization ini penting untuk menerjemahkan representasi data internal Django (seperti `QuerySet`) menjadi struktur yang standar dan dapat dipahami oleh sistem-sistem selain yang berbasis Django, seperti Dart/Flutter, Javascript, dll.
+
+#### AI Disclosure: Tugas 3
+
+AI digunakan terutama untuk tugas repetitif (seperti writing tests), implementasi fitur diluar yang diminta oleh Individual Assignment 3 (seperti filtering dan sorting), dan debugging.
+
+##### Tools yang Digunakan
+
+- Claude Code: digunakan untuk membantu implementasi fitur, debugging, dan write unit tests.
+
+> Catatan: Log penggunaan Claude Code disediakan di folder `logs/`
+
+##### Bagian Spesifik yang Dibantu AI
+
+1. Write unit test untuk views CRUD experience & project dan fungsionalitas sorting dan filtering
+2. Implementasi fitur filtering dan sorting di experience & project list pages
+3. Debugging
+
+##### Strategi Prompting
+
+- Menjalankan Claude Code dalam manual approval mode (bukan auto-accept), sehingga setiap perubahan/edit yang diajukan AI harus ditinjau dan disetujui secara eksplisit satu per satu.
+- Semua kode hasil AI ditinjau dan diuji secara manual sebelum di-commit.
+- Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).
