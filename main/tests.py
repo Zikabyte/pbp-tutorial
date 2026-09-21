@@ -160,6 +160,38 @@ class MainTest(TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["fields"]["title"], self.experience.title)
 
+    def test_get_experience_json_filters_by_category(self):
+        Experience.objects.create(
+            title="Volunteer Mengajar",
+            description="Mengajar coding untuk anak-anak.",
+            category="volunteer",
+        )
+
+        response = self.client.get(reverse("main:get_experience_json"), {"category": "volunteer"})
+        data = json.loads(response.content)
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["fields"]["category"], "volunteer")
+
+    def test_get_experience_json_sorted_by_title_desc(self):
+        Experience.objects.create(
+            title="Zebra Project",
+            description="Contoh pengalaman lain.",
+            category="freelance",
+        )
+
+        response = self.client.get(reverse("main:get_experience_json"), {"sort": "-title"})
+        data = json.loads(response.content)
+        titles = [entry["fields"]["title"] for entry in data]
+
+        self.assertEqual(titles, sorted(titles, reverse=True))
+
+    def test_show_experience_defaults_to_sort_by_title(self):
+        response = self.client.get(reverse("main:show_experience"))
+
+        self.assertEqual(response.context["sort_query"], "title")
+        self.assertEqual(response.context["category_query"], "")
+
     # ------------------------------ Project Testing ----------------------------- #
     def test_project_page(self):
         response = self.client.get(reverse("main:show_projects"))
@@ -274,6 +306,44 @@ class MainTest(TestCase):
 
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["fields"]["name"], self.project.name)
+
+    def test_get_projects_json_filters_by_category(self):
+        Project.objects.create(
+            name="Samudera",
+            description="Aplikasi pemantau saham.",
+            category="mobile-development",
+            project_url="https://github.com/Zikabyte/samudera",
+        )
+
+        response = self.client.get(reverse("main:get_projects_json"), {"category": "mobile-development"})
+        data = json.loads(response.content)
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["fields"]["category"], "mobile-development")
+
+    def test_get_projects_json_sorted_by_name_desc(self):
+        Project.objects.create(
+            name="Alpha Tool",
+            description="Contoh proyek lain.",
+            category="general",
+        )
+
+        response = self.client.get(reverse("main:get_projects_json"), {"sort": "-name"})
+        data = json.loads(response.content)
+        names = [entry["fields"]["name"] for entry in data]
+
+        self.assertEqual(names, sorted(names, reverse=True))
+
+    def test_get_projects_json_ignores_invalid_sort_value(self):
+        response = self.client.get(reverse("main:get_projects_json"), {"sort": "'; DROP TABLE"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_show_projects_defaults_to_sort_by_name(self):
+        response = self.client.get(reverse("main:show_projects"))
+
+        self.assertEqual(response.context["sort_query"], "name")
+        self.assertEqual(response.context["category_query"], "")
 
 # ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #
 class NavbarFunctionalTest(StaticLiveServerTestCase):

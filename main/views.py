@@ -22,6 +22,10 @@ def show_main(request):
 
 # --------------------------------- Projects --------------------------------- #
 
+PROJECT_SORT_OPTIONS = {"name", "-name", "category", "-category"}
+EXPERIENCE_SORT_OPTIONS = {"title", "-title", "category", "-category"}
+
+
 def show_projects(request):
     json_response = get_projects_json(request)
 
@@ -31,11 +35,18 @@ def show_projects(request):
     )
     projects = [project.object for project in projects]
     title_query = request.GET.get("title", "").strip()
+    category_query = request.GET.get("category", "").strip()
+    sort_query = request.GET.get("sort", "name").strip()
+    if sort_query not in PROJECT_SORT_OPTIONS:
+        sort_query = "name"
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
         "project_list": projects,
         "title_query": title_query,
+        "category_query": category_query,
+        "sort_query": sort_query,
+        "category_choices": Project.PROJECT_CATEGORIES_CHOICES,
     }
     return render(request, "project.html", context)
 
@@ -71,10 +82,20 @@ def update_project(request, project_id):
 
 def get_projects_json(request):
     title_query = request.GET.get("title", "").strip()
+    category_query = request.GET.get("category", "").strip()
+    sort_query = request.GET.get("sort", "name").strip()
+    if sort_query not in PROJECT_SORT_OPTIONS:
+        sort_query = "name"
+
     projects = Project.objects.all()
 
     if title_query:
         projects = projects.filter(name__icontains=title_query)
+
+    if category_query:
+        projects = projects.filter(category=category_query)
+
+    projects = projects.order_by(sort_query)
 
     projects_json = serializers.serialize("json", projects)
     return HttpResponse(projects_json, content_type="application/json")
@@ -100,20 +121,37 @@ def show_experience(request):
     )
     experiences = [experience.object for experience in experiences]
     title_query = request.GET.get("title", "").strip()
+    category_query = request.GET.get("category", "").strip()
+    sort_query = request.GET.get("sort", "title").strip()
+    if sort_query not in EXPERIENCE_SORT_OPTIONS:
+        sort_query = "title"
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
         "experience_list": experiences,
         "title_query": title_query,
+        "category_query": category_query,
+        "sort_query": sort_query,
+        "category_choices": Experience.EXPERIENCE_CHOICES,
     }
     return render(request, "experience.html", context)
 
 def get_experience_json(request):
     title_query = request.GET.get("title", "").strip()
+    category_query = request.GET.get("category", "").strip()
+    sort_query = request.GET.get("sort", "title").strip()
+    if sort_query not in EXPERIENCE_SORT_OPTIONS:
+        sort_query = "title"
+
     experiences = Experience.objects.all()
 
     if title_query:
         experiences = experiences.filter(title__icontains=title_query)
+
+    if category_query:
+        experiences = experiences.filter(category=category_query)
+
+    experiences = experiences.order_by(sort_query)
 
     projects_json = serializers.serialize("json", experiences)
     return HttpResponse(projects_json, content_type="application/json")

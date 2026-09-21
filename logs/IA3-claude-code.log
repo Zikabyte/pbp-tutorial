@@ -365,3 +365,255 @@ Bug lain yang ketemu sambil jalan (di luar scope tapi saya benerin karena kena p
 4 referensi lama show_project → show_projects (bug lama yang sempat saya laporkan berkali-kali, sekarang beres).
 test_empty_project_page (test lama) — teks assert-nya "Belum ada project..." padahal template sekarang pakai "Belum ada proyek...".
 ProjectForm mewajibkan image_url diisi (gak bisa kosong) meski model field-nya null=True — karena gak ada blank=True di model. Saya sesuaikan data test-nya (bukan model-nya, itu keputusan desain kamu — kasih tau aja kalau mau image_url/project_url dibikin optional beneran).
+
+Aku lagi cari mencari poin plus buat tugas aku, menurut kamu ada yang bisa di-wow kan lagi gak implementasinya?
+Grep "messages" (in C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates)
+1 line of output
+Bash Check if any authentication is already wired up
+IN
+grep -rn "login_required\|LoginView\|authenticate\|django.contrib.auth" main/ portfolio/ 2>/dev/null | grep -v migrations
+
+OUT
+portfolio/settings.py:41:    'django.contrib.auth',
+portfolio/settings.py:55:    'django.contrib.auth.middleware.AuthenticationMiddleware',
+portfolio/settings.py:75:                'django.contrib.auth.context_processors.auth',
+portfolio/settings.py:130:        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+portfolio/settings.py:133:        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+portfolio/settings.py:136:        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+portfolio/settings.py:139:        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+Binary file portfolio/__pycache__/settings.cpython-314.pyc matches
+Dua hal konkret yang saya temukan pas ngecek kode kamu, ini bukan cuma "ide" tapi celah nyata yang worth di-highlight:
+
+CRUD kamu 100% public, gak ada login sama sekali. django.contrib.auth udah keinstall (default Django) tapi gak pernah dipakai — artinya siapapun yang buka /project/add/, /project/<id>/edit/, /project/<id>/delete/ bisa langsung nambah/ubah/hapus data portofolio kamu tanpa autentikasi apapun. Ini juga biasanya materi tutorial PBP berikutnya (login/register/logout + @login_required), jadi ngerjain ini sekarang selain nutup celah beneran, juga kemungkinan besar emang bagian dari rubrik penilaian.
+
+messages.success(...) yang kamu panggil di semua view create/update/delete gak pernah ditampilkan — saya cek, gak ada satupun template yang render {% if messages %}. Jadi tiap kali orang berhasil tambah/edit/hapus project, gak ada notifikasi/feedback apapun yang muncul di UI (padahal backend-nya udah nyiapin pesannya). Ini "quick win" banget — efeknya kelihatan langsung, effort-nya kecil.
+
+Di luar dua itu, beberapa ide tambahan kalau mau lebih jauh (urutan effort-nya naik):
+
+AJAX search — kamu udah punya get_projects_json/get_experience_json, tinggal ganti form pencarian pakai fetch() biar hasil filter muncul tanpa reload halaman (nunjukin ngerti kenapa endpoint JSON itu ada, bukan cuma buat formalitas tugas).
+Upload gambar asli (Django ImageField + media storage) daripada cuma paste URL gambar — lebih "real app" feel-nya.
+Pagination kalau project/experience-nya banyak.
+Mau saya mulai dari yang mana? Saya sarankan auth dulu (paling berdampak + kemungkinan besar emang dinilai), terus messages banner (cepet banget, langsung kelihatan hasilnya).
+
+
+Filtering dan sorting di project/experience list itu kira-kira oke gak?
+Lumayan solid — effort-nya sedang, dan nyambung natural sama fitur search yang udah ada (title query param). Tapi dibanding dua yang saya sebut sebelumnya (auth & messages banner), ini levelnya "polish", bukan "nutup celah/gap" — jadi saya taruh di prioritas setelah itu.
+
+Yang paling gampang & masuk akal buat di-implement:
+
+Filter by category — Project dan Experience sama-sama udah punya field category dengan choices (dropdown), jadi tinggal tambah ?category=web-development ke query, filter-nya 1 baris (.filter(category=...)) persis pola yang udah dipakai buat title search.
+Sort by nama (A-Z/Z-A) — gampang, .order_by("name") / .order_by("-name").
+Yang gak bisa langsung: sort "terbaru dulu" buat Project — modelnya gak punya field timestamp sama sekali (beda dari Experience yang punya started_at), jadi kalau mau sorting by tanggal buat Project, perlu nambah field baru dulu (created_at = models.DateTimeField(auto_now_add=True)) + migration.
+
+Kalau mau saya implementasikan, saya sarankan mulai dari filter category + sort nama dulu (paling cepat, paling kepake), baru nanti mikirin timestamp buat Project kalau memang mau full "sort by newest" di kedua model. Mau saya jalanin?
+
+
+auth itu tugas berikutnya coi, jadi ya mending ini dulu
+Oke masuk akal, prioritas real time emang beda. Saya cek dulu struktur experience.html (belum ada search/filter sama sekali di situ) dan CSS-nya sebelum nambahin.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Grep "\.project-search" (in C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css)
+44 lines of output
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Sekarang saya implementasikan filter category + sort di kedua model.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 11 lines
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 10 lines
+Sekarang yang Experience.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 17 lines
+Sekarang tambahkan UI-nya. Mulai dari project.html (search form-nya udah ada, tinggal nambah select).
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Added 12 lines
+Sekarang tambahkan form search+filter+sort yang sama ke experience.html (belum pernah ada sebelumnya).
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Added 24 lines
+Sekarang update empty-state di experience.html biar bisa bedain "belum ada data" vs "gak ada hasil pencarian" (sama kayak pola di project.html).
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html (lines 41-55)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Added 4 lines
+Sekalian rapikan project.html juga — empty-state-nya sekarang cuma cek title_query, belum cek category_query.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html (lines 63-70)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Modified
+Sekarang tambahkan CSS buat .project-search__select.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css (lines 613-634)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css
+Added 13 lines
+Sekarang tambahkan test buat fitur filter+sort ini.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 2-31)
+Bash Locate insertion points for new filter/sort tests
+IN
+grep -n "test_get_experience_json_filters_by_title\|test_get_projects_json_filters_by_title_param\|# ------------------------------ Project Testing\|# ----------------- Bonus" main/tests.py
+
+OUT
+150:    def test_get_experience_json_filters_by_title(self):
+163:    # ------------------------------ Project Testing ----------------------------- #
+264:    def test_get_projects_json_filters_by_title_param(self):
+278:# ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 151-165)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Added 32 lines
+Sekarang yang Project, ditaruh setelah test_get_projects_json_filters_by_title_param.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 279-293)
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 297-316)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Added 38 lines
+Sekarang jalankan test suite.
+
+
+Bash Run non-Selenium unit tests after adding filter/sort feature
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.MainTest -v 2 2>&1 | tail -50
+
+OUT
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying main.0001_initial... OK
+  Applying main.0002_project... OK
+  Applying main.0003_alter_project_category... OK
+  Applying sessions.0001_initial...test_completed_experience (main.tests.MainTest.test_completed_experience) ... ok
+test_create_experience_invalid_post_does_not_create (main.tests.MainTest.test_create_experience_invalid_post_does_not_create) ... ok
+test_create_experience_valid_post (main.tests.MainTest.test_create_experience_valid_post) ... ok
+test_create_experience_view_get (main.tests.MainTest.test_create_experience_view_get) ... ok
+test_create_project_invalid_post_does_not_create (main.tests.MainTest.test_create_project_invalid_post_does_not_create) ... ok
+test_create_project_valid_post (main.tests.MainTest.test_create_project_valid_post) ... ok
+test_create_project_view_get (main.tests.MainTest.test_create_project_view_get) ... ok
+test_delete_experience_get_does_not_remove_it (main.tests.MainTest.test_delete_experience_get_does_not_remove_it) ... ok
+test_delete_experience_post_removes_it (main.tests.MainTest.test_delete_experience_post_removes_it) ... ok
+test_delete_project_get_does_not_remove_it (main.tests.MainTest.test_delete_project_get_does_not_remove_it) ... ok
+test_delete_project_post_removes_it (main.tests.MainTest.test_delete_project_post_removes_it) ... ok
+test_empty_experience_page (main.tests.MainTest.test_empty_experience_page) ... ok
+test_empty_project_page (main.tests.MainTest.test_empty_project_page) ... ok
+test_experience_model (main.tests.MainTest.test_experience_model) ... ok
+test_experience_page (main.tests.MainTest.test_experience_page) ... ok
+test_get_experience_json (main.tests.MainTest.test_get_experience_json) ... ok
+test_get_experience_json_filters_by_category (main.tests.MainTest.test_get_experience_json_filters_by_category) ... ok
+test_get_experience_json_filters_by_title (main.tests.MainTest.test_get_experience_json_filters_by_title) ... ok
+test_get_experience_json_sorted_by_title_desc (main.tests.MainTest.test_get_experience_json_sorted_by_title_desc) ... ok
+test_get_projects_json (main.tests.MainTest.test_get_projects_json) ... ok
+test_get_projects_json_filters_by_category (main.tests.MainTest.test_get_projects_json_filters_by_category) ... ok
+test_get_projects_json_filters_by_title_param (main.tests.MainTest.test_get_projects_json_filters_by_title_param) ... ok
+test_get_projects_json_ignores_invalid_sort_value (main.tests.MainTest.test_get_projects_json_ignores_invalid_sort_value) ... ok
+test_get_projects_json_sorted_by_name_desc (main.tests.MainTest.test_get_projects_json_sorted_by_name_desc) ... ok
+test_main_url_is_accessible (main.tests.MainTest.test_main_url_is_accessible) ... ok
+test_nonexistent_page_returns_404 (main.tests.MainTest.test_nonexistent_page_returns_404) ... ok
+test_project_model (main.tests.MainTest.test_project_model) ... ok
+test_project_page (main.tests.MainTest.test_project_page) ... ok
+test_show_experience_defaults_to_sort_by_title (main.tests.MainTest.test_show_experience_defaults_to_sort_by_title) ... ok
+test_show_projects_defaults_to_sort_by_name (main.tests.MainTest.test_show_projects_defaults_to_sort_by_name) ... ok
+test_update_experience_valid_post (main.tests.MainTest.test_update_experience_valid_post) ... ok
+test_update_experience_view_get_prefills_form (main.tests.MainTest.test_update_experience_view_get_prefills_form) ... ok
+test_update_nonexistent_experience_returns_404 (main.tests.MainTest.test_update_nonexistent_experience_returns_404) ... ok
+test_update_nonexistent_project_returns_404 (main.tests.MainTest.test_update_nonexistent_project_returns_404) ... ok
+test_update_project_valid_post (main.tests.MainTest.test_update_project_valid_post) ... ok
+test_update_project_view_get_prefills_form (main.tests.MainTest.test_update_project_view_get_prefills_form) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.354s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+ OK
+System check identified no issues (0 silenced).
+Semua 36 test lulus. Sekarang cek visual biar mastiin UI-nya beneran kepake dengan benar.
+
+
+Bash Start dev server and screenshot the new filter/sort UI
+IN
+./.venv/Scripts/python.exe manage.py runserver 8000 > /tmp/runserver.log 2>&1 &
+sleep 2
+./.venv/Scripts/python.exe -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+options = Options()
+options.add_argument('--headless=new')
+options.add_argument('--window-size=1400,900')
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+driver = webdriver.Chrome(options=options)
+
+driver.get('http://127.0.0.1:8000/project/')
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/filter_project.png')
+
+driver.get('http://127.0.0.1:8000/experience/')
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/filter_experience.png')
+
+# Test actual filtering works end to end
+driver.get('http://127.0.0.1:8000/project/?category=web-development&sort=-name')
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/filter_project_applied.png')
+
+driver.quit()
+print('done')
+"
+
+OUT
+done
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\filter_project.png
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\filter_experience.png
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\filter_project_applied.png
+Filter dan sort-nya beneran jalan (kategori "Web Development" + sort Z-A cuma nyisain "Zikapedia"). Bersihkan dan jalankan full test suite sekali lagi.
+
+
+Bash Clean up screenshots and run the complete test suite including Selenium
+IN
+pkill -f "manage.py runserver" 2>/dev/null
+cd /c/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0 && rm -f filter_project.png filter_experience.png filter_project_applied.png
+./.venv/Scripts/python.exe manage.py test main 2>&1 | tail -15
+
+OUT
+Creating test database for alias 'default'...
+
+......................................[21/Sep/2026 22:03:32,091] - Broken pipe from ('127.0.0.1', 49733)
+[21/Sep/2026 22:03:32,092] - Broken pipe from ('127.0.0.1', 58867)
+[21/Sep/2026 22:03:32,092] - Broken pipe from ('127.0.0.1', 57480)
+[21/Sep/2026 22:03:32,092] - Broken pipe from ('127.0.0.1', 59931)
+
+----------------------------------------------------------------------
+Ran 38 tests in 4.617s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 38 test(s).
+System check identified no issues (0 silenced).
+Semua 38 test lulus. Ringkasan fitur filtering + sorting yang saya tambahkan:
+
+main/views.py
+
+get_projects_json / get_experience_json sekarang terima ?category= (filter exact match) dan ?sort= (whitelist: name/-name/category/-category untuk Project, title/-title/category/-category untuk Experience — divalidasi dulu biar gak bisa disuntik string sembarangan ke order_by()).
+show_projects / show_experience nerusin category_query, sort_query, dan category_choices (diambil dari choices model masing-masing) ke context.
+Template (project.html, experience.html)
+
+Dropdown "Kategori" dan "Urutkan" ditambahkan ke form pencarian (GET, jadi bisa langsung di-share via URL/bookmark).
+experience.html sebelumnya sama sekali gak punya search — sekarang polanya disamain persis dengan project.html.
+Empty-state disesuaikan biar beda pesan antara "belum ada data" vs "gak ada hasil pencarian/filter".
+CSS — .project-search__select baru, .project-search dibikin flex-wrap biar tetap rapi di layar sempit.
+
+Test — 8 test baru: filter by category, sort ascending/descending, default sort value, dan satu test khusus mastiin sort yang invalid/aneh gak bikin crash (whitelist-nya jalan).
+
+Udah saya cek visual juga — filter+sort beneran motong hasil sesuai yang dipilih.

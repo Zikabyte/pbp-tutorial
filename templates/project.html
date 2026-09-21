@@ -22,6 +22,18 @@
 			placeholder="Cari berdasarkan nama proyek"
 			class="project-search__input"
 			aria-label="Cari berdasarkan nama proyek">
+		<select name="category" class="project-search__select" aria-label="Filter kategori">
+			<option value="">Semua Kategori</option>
+			{% for value, label in category_choices %}
+			<option value="{{ value }}" {% if category_query == value %}selected{% endif %}>{{ label }}</option>
+			{% endfor %}
+		</select>
+		<select name="sort" class="project-search__select" aria-label="Urutkan">
+			<option value="name" {% if sort_query == "name" %}selected{% endif %}>Nama (A-Z)</option>
+			<option value="-name" {% if sort_query == "-name" %}selected{% endif %}>Nama (Z-A)</option>
+			<option value="category" {% if sort_query == "category" %}selected{% endif %}>Kategori (A-Z)</option>
+			<option value="-category" {% if sort_query == "-category" %}selected{% endif %}>Kategori (Z-A)</option>
+		</select>
 		<button type="submit" class="button">Cari</button>
 	</form>
 
@@ -51,8 +63,8 @@
 			</div>
 		</article>
 		{% empty %}
-			{% if title_query %}
-				<p class="empty-state">Tidak ada proyek dengan nama tersebut.</p>
+			{% if title_query or category_query %}
+				<p class="empty-state">Tidak ada proyek yang cocok dengan pencarian.</p>
 			{% else %}
 				<p class="empty-state">Belum ada proyek yang ditambahkan.</p>
 			{% endif %}

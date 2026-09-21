@@ -611,12 +611,13 @@ header {
 
 .project-search {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 0.75rem;
 	margin-bottom: 1.5rem;
 }
 
 .project-search__input {
-	width: 100%;
+	flex: 1 1 200px;
 	min-width: 0;
 	padding: 0.7rem;
 	border: 1px solid var(--line);
@@ -626,7 +627,19 @@ header {
 	font: inherit;
 }
 
-.project-search__input:focus {
+.project-search__select {
+	flex: 0 1 170px;
+	min-width: 0;
+	padding: 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: #fff;
+	color: black;
+	font: inherit;
+}
+
+.project-search__input:focus,
+.project-search__select:focus {
 	outline: 2px solid var(--accent);
 	border-color: var(--accent);
 }
