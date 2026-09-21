@@ -44,7 +44,10 @@
 						<span>Check It Out!</span>
 					</a>
 				{% endif %}
-				{% include "components/project_delete_modal.html" with project=project %}
+				<div class="project-actions">
+					<a href="{% url 'main:update_project' project.id %}" class="button button-secondary">Edit</a>
+					{% include "components/project_delete_modal.html" with project=project %}
+				</div>
 			</div>
 		</article>
 		{% empty %}

@@ -20,6 +20,11 @@
 				{% else %}
 				<p class="experience-status">Selesai</p>
 				{% endif %}
+
+				<div class="project-actions">
+					<a href="{% url 'main:update_experience' experience.id %}" class="button button-secondary">Edit</a>
+					{% include "components/experience_delete_modal.html" with experience=experience %}
+				</div>
 			</article>
 			{% empty %}
 			<p class="empty-state">Belum ada pengalaman yang ditambahkan.</p>
