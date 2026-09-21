@@ -1,29 +1,27 @@
 {% extends "base.html" %}
-{% block meta %}
-    <title>Add Project - {{ name }}</title>
-{% endblock meta %}
+{% block title %}
+    {% if project %}Edit Project{% else %}Add Project{% endif %} - {{ name }}
+{% endblock title %}
 {% block content %}
-    <main>
-        <section class="experience-section">
-            <div class="container">
-                <h1>Add New Projects</h1>
-                <form method="post"
-                      action="{% url 'main:create_project' %}"
-                      class="project-form">
-                    {% csrf_token %}
-                    {% for field in form %}
-                        <div class="form-group">
-                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% for error in field.errors %}
-                                <p class="form-error">{{ error }}</p>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
-                    <button type="submit" class="button">Tambah Project</button>
-                    <a href="{% url 'main:show_projects' %}" class="button button-secondary">Batal</a>
-                </form>
-            </div>
-        </section>
-    </main>
+    <section class="experience-section">
+        <div class="container">
+            <h1>{% if project %}Edit Project{% else %}Add New Project{% endif %}</h1>
+            <form method="post"
+                  action="{% if project %}{% url 'main:update_project' project.id %}{% else %}{% url 'main:create_project' %}{% endif %}"
+                  class="project-form">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <p class="form-error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="button">{% if project %}Simpan Perubahan{% else %}Tambah Project{% endif %}</button>
+                <a href="{% url 'main:show_projects' %}" class="button button-secondary">Batal</a>
+            </form>
+        </div>
+    </section>
 {% endblock content %}

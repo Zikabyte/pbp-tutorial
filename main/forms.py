@@ -22,7 +22,7 @@ class ProjectForm(ModelForm):
         }
 
         widgets = {
-            "title": TextInput(
+            "name": TextInput(
                 attrs={
                     "placeholder": "Portfolio Website",
                     "maxlength": 255,

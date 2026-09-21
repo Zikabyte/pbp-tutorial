@@ -2,9 +2,9 @@
     <button type="button"
             class="button button-danger"
             popovertarget="delete-project-{{ project.id }}"
-            aria-label="Hapus {{ project.title }}"
+            aria-label="Hapus {{ project.name }}"
             title="Hapus proyek">
-        Hapus Proyek
+        Hapus
     </button>
 </p>
 <div id="delete-project-{{ project.id }}"
@@ -27,7 +27,7 @@
         <h2 id="delete-project-title-{{ project.id }}">Hapus Projek?</h2>
         <p>
             Apakah Anda yakin ingin menghapus
-            <strong>{{ project.title }}</strong>?
+            <strong>{{ project.name }}</strong>?
         </p>
         <div class="project-delete-modal__actions">
             <button type="button"

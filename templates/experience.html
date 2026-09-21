@@ -6,6 +6,30 @@
 		<p class="section-kicker">Perjalanan saya sejauh ini</p>
 		<h1>Experience</h1>
 
+		<form method="get"
+				action="{% url 'main:show_experience' %}"
+				class="project-search">
+			<input type="search"
+				name="title"
+				value="{{ title_query }}"
+				placeholder="Cari berdasarkan judul pengalaman"
+				class="project-search__input"
+				aria-label="Cari berdasarkan judul pengalaman">
+			<select name="category" class="project-search__select" aria-label="Filter kategori">
+				<option value="">Semua Kategori</option>
+				{% for value, label in category_choices %}
+				<option value="{{ value }}" {% if category_query == value %}selected{% endif %}>{{ label }}</option>
+				{% endfor %}
+			</select>
+			<select name="sort" class="project-search__select" aria-label="Urutkan">
+				<option value="title" {% if sort_query == "title" %}selected{% endif %}>Judul (A-Z)</option>
+				<option value="-title" {% if sort_query == "-title" %}selected{% endif %}>Judul (Z-A)</option>
+				<option value="category" {% if sort_query == "category" %}selected{% endif %}>Kategori (A-Z)</option>
+				<option value="-category" {% if sort_query == "-category" %}selected{% endif %}>Kategori (Z-A)</option>
+			</select>
+			<button type="submit" class="button">Cari</button>
+		</form>
+
 		<div class="experience-grid">
 			{% for experience in experience_list %}
 			<article class="experience-card">
@@ -20,9 +44,18 @@
 				{% else %}
 				<p class="experience-status">Selesai</p>
 				{% endif %}
+
+				<div class="project-actions">
+					<a href="{% url 'main:update_experience' experience.id %}" class="button button-secondary">Edit</a>
+					{% include "components/experience_delete_modal.html" with experience=experience %}
+				</div>
 			</article>
 			{% empty %}
-			<p class="empty-state">Belum ada pengalaman yang ditambahkan.</p>
+				{% if title_query or category_query %}
+					<p class="empty-state">Tidak ada pengalaman yang cocok dengan pencarian.</p>
+				{% else %}
+					<p class="empty-state">Belum ada pengalaman yang ditambahkan.</p>
+				{% endif %}
 			{% endfor %}
 		</div>
 	</div>

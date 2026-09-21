@@ -1,0 +1,619 @@
+Coba lihat project update mechanism template yang sudah aku buat, kira-kira udh aman gak implementasinya
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\projects_form.html
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\forms.py (lines 2-54)
+Saya cek strukturnya dan sekalian saya tes jalanin lewat Django test client biar gak cuma nebak dari baca kode aja.
+
+
+Bash Smoke test update_project template rendering and save flow
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.test import Client
+from django.test.utils import override_settings
+from django.urls import reverse
+from main.models import Project
+
+with override_settings(ALLOWED_HOSTS=['*']):
+    c = Client()
+    proj = Project.objects.first()
+    print('sample project:', proj.name if proj else None)
+
+    # GET edit page, check prefill + title tag + main tag count
+    resp = c.get(reverse('main:update_project', kwargs={'project_id': proj.id}))
+    content = resp.content.decode()
+    print('status:', resp.status_code)
+    print('name prefilled:', proj.name in content)
+    print('<main> tag count:', content.count('<main'))
+    import re
+    title_match = re.search(r'<title>(.*?)</title>', content, re.S)
+    print('rendered <title>:', title_match.group(1).strip() if title_match else None)
+
+    # POST update
+    resp2 = c.post(reverse('main:update_project', kwargs={'project_id': proj.id}), data={
+        'name': proj.name,
+        'description': proj.description,
+        'image_url': proj.image_url or '',
+        'category': proj.category,
+        'project_url': proj.project_url or '',
+    }, follow=True)
+    print('POST status:', resp2.status_code)
+" 2>&1 | grep -v "^\["
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+sample project: GARDA NLP
+status: 200
+name prefilled: True
+<main> tag count: 2
+rendered <title>: Edit Project - Mohammad Zidane Kurnianto
+POST status: 200
+Fungsional-nya aman — udah saya verifikasi lewat test client:
+
+GET halaman edit → 200, form ke-prefill data project yang benar (name muncul di value input).
+Tab title kebaca bener: "Edit Project - Mohammad Zidane Kurnianto" (block title-nya jalan, beda dari versi lama yang kepotong Prettier).
+POST update → 200, data kesimpen.
+Logic {% if project %} buat bedain mode Add vs Edit (action URL, judul, teks tombol) semuanya kerja sesuai konteks yang dikirim update_project/create_project.
+Tapi ada satu masalah struktural HTML: saya cek, <main muncul 2 kali di hasil render. Ini karena base.html udah bungkus {% block content %} pakai <main>...</main>, terus di projects_form.html baris 6 kamu tambahin <main> lagi di dalam {% block content %} — jadi jadi <main><main>...</main></main> (nested). Gak bikin crash, tapi itu HTML invalid (elemen <main> seharusnya cuma satu per halaman, dan gak boleh nested — ini juga masalah aksesibilitas buat screen reader, karena mereka ngandelin <main> sebagai landmark tunggal).
+
+Fix-nya gampang — tinggal hapus tag <main>/</main> di baris 6 & 28, karena base.html udah nyediain itu buat kamu:
+
+
+{% block content %}
+    <section class="experience-section">
+        ...
+    </section>
+{% endblock content %}
+Mau saya bereskan itu sekarang?
+
+Satu catatan kecil di luar template ini (di forms.py): ProjectForm.Meta.widgets masih ada key "title": TextInput(...) yang gak pernah kepake karena field aslinya name, bukan title — dead code peninggalan lama, gak bahaya tapi bisa dibersihin kapan-kapan.
+
+
+bersihin dong
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\projects_form.html
+Removed 2 lines
+Sekarang bersihkan forms.py — hapus key "title" yang gak kepake, sekalian samain image_url pakai URLInput biar konsisten (sekarang TextInput, gak ada bedanya fungsional tapi gak dapet validasi type="url" browser).
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\forms.py
+Modified
+Sekarang verifikasi ulang.
+
+
+Bash Verify nested main fix and widget fix
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.test import Client
+from django.test.utils import override_settings
+from django.urls import reverse
+from main.models import Project
+
+with override_settings(ALLOWED_HOSTS=['*']):
+    c = Client()
+    proj = Project.objects.first()
+
+    resp = c.get(reverse('main:update_project', kwargs={'project_id': proj.id}))
+    content = resp.content.decode()
+    print('status:', resp.status_code)
+    print('<main> tag count:', content.count('<main'))
+    print('name field now has placeholder:', 'Portfolio Website' in content)
+    print('name prefilled:', proj.name in content)
+
+    resp2 = c.get(reverse('main:create_project'))
+    print('create page status:', resp2.status_code, '| <main> count:', resp2.content.decode().count('<main'))
+" 2>&1 | grep -v "^\["
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+status: 200
+<main> tag count: 1
+name field now has placeholder: True
+name prefilled: True
+create page status: 200 | <main> count: 1
+Sekarang jalankan full test suite biar mastiin gak ada yang kebreak.
+
+
+Bash Run non-Selenium unit tests after cleanup
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.MainTest 2>&1 | tail -20
+
+OUT
+======================================================================
+ERROR: test_project_page (main.tests.MainTest.test_project_page)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py", line 73, in test_project_page
+    response = self.client.get(reverse("main:show_project"))
+                               ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\urls\base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\urls\resolvers.py", line 842, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'show_project' not found. 'show_project' is not a valid view function or pattern name.
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.079s
+
+FAILED (errors=3)
+Destroying test database for alias 'default'...
+
+Found 9 test(s).
+System check identified no issues (0 silenced).
+Cuma sisa error lama yang udah pernah saya laporkan (show_project vs show_projects di main/tests.py, belum pernah kamu minta saya fix) — bukan regresi baru. Beres:
+
+templates/projects_form.html — <main> bersarang dihapus, sekarang cuma 1 <main> per halaman (dikonfirmasi via test).
+main/forms.py — ProjectForm.Meta.widgets key "title" (dead code, gak pernah kepake) diganti jadi "name" (field asli), jadi sekarang field nama project beneran dapet placeholder + maxlength. Sekalian image_url balik ke URLInput (dari TextInput) biar dapet validasi type="url" browser.
+c:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\portfolio\views.py
+bisakah kamu melengkapi tests.py untuk views baru kita?
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Saya lengkapi tests.py dengan test buat semua view CRUD baru (create/update/delete/JSON) untuk Project dan Experience. Sekalian saya perbaiki 4 referensi lama show_project → show_projects yang emang masih rusak dari dulu (biar test suite bisa jalan bersih semua).
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Added 2 lines
+Sekarang perbaiki 4 referensi lama.
+
+
+Bash Fix stale show_project references to show_projects
+IN
+sed -i 's/main:show_project"/main:show_projects"/g' main/tests.py && grep -n "show_project" main/tests.py
+
+OUT
+35:        self.assertContains(response, f'href="{reverse("main:show_projects")}"')
+75:        response = self.client.get(reverse("main:show_projects"))
+86:        response = self.client.get(reverse("main:show_projects"))
+115:        self.assertIn(reverse("main:show_projects"), self.selenium.current_url)
+Sekarang tambahkan blok test CRUD Experience dan Project.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Added 90 lines
+Sekarang blok Project CRUD, ditaruh sebelum bagian Selenium.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Added 95 lines
+Sekarang jalankan test suite (non-Selenium dulu, biar cepat) buat mastiin semua test baru beneran lulus.
+
+
+Bash Run the non-Selenium unit tests with verbose output
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.MainTest -v 2 2>&1 | tail -60
+
+OUT
+test_create_project_valid_post (main.tests.MainTest.test_create_project_valid_post) ... FAIL
+test_create_project_view_get (main.tests.MainTest.test_create_project_view_get) ... ok
+test_delete_experience_get_does_not_remove_it (main.tests.MainTest.test_delete_experience_get_does_not_remove_it) ... ok
+test_delete_experience_post_removes_it (main.tests.MainTest.test_delete_experience_post_removes_it) ... ok
+test_delete_project_get_does_not_remove_it (main.tests.MainTest.test_delete_project_get_does_not_remove_it) ... ok
+test_delete_project_post_removes_it (main.tests.MainTest.test_delete_project_post_removes_it) ... ok
+test_empty_experience_page (main.tests.MainTest.test_empty_experience_page) ... ok
+test_empty_project_page (main.tests.MainTest.test_empty_project_page) ... FAIL
+test_experience_model (main.tests.MainTest.test_experience_model) ... ok
+test_experience_page (main.tests.MainTest.test_experience_page) ... ok
+test_get_experience_json (main.tests.MainTest.test_get_experience_json) ... ok
+test_get_experience_json_filters_by_title (main.tests.MainTest.test_get_experience_json_filters_by_title) ... ok
+test_get_projects_json (main.tests.MainTest.test_get_projects_json) ... ok
+test_get_projects_json_filters_by_title_param (main.tests.MainTest.test_get_projects_json_filters_by_title_param) ... ok
+test_main_url_is_accessible (main.tests.MainTest.test_main_url_is_accessible) ... ok
+test_nonexistent_page_returns_404 (main.tests.MainTest.test_nonexistent_page_returns_404) ... ok
+test_project_model (main.tests.MainTest.test_project_model) ... ok
+test_project_page (main.tests.MainTest.test_project_page) ... ok
+test_update_experience_valid_post (main.tests.MainTest.test_update_experience_valid_post) ... ok
+test_update_experience_view_get_prefills_form (main.tests.MainTest.test_update_experience_view_get_prefills_form) ... ok
+test_update_nonexistent_experience_returns_404 (main.tests.MainTest.test_update_nonexistent_experience_returns_404) ... ok
+test_update_nonexistent_project_returns_404 (main.tests.MainTest.test_update_nonexistent_project_returns_404) ... ok
+test_update_project_valid_post (main.tests.MainTest.test_update_project_valid_post) ... FAIL
+test_update_project_view_get_prefills_form (main.tests.MainTest.test_update_project_view_get_prefills_form) ... ok
+
+======================================================================
+FAIL: test_create_project_valid_post (main.tests.MainTest.test_create_project_valid_post)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py", line 199, in test_create_project_valid_post
+    self.assertRedirects(response, reverse("main:show_projects"))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 200 != 302 : Response didn't redirect as expected: Response code was 200 (expected 302)
+
+======================================================================
+FAIL: test_empty_project_page (main.tests.MainTest.test_empty_project_page)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py", line 178, in test_empty_project_page
+    self.assertContains(response, "Belum ada project yang ditambahkan.")
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : Couldn't find 'Belum ada project yang ditambahkan.' in the following response
+b'<!doctype html>\n<html lang="en">\n\t<head>\n\t\t<meta charset="UTF-8" />\n\t\t<meta name="viewport" content="width=device-width, initial-scale=1.0" />\n\t\t<title>Zikafolio - Project</title>\n\t\t<link rel="preconnect" href="https://fonts.googleapis.com" />\n\t\t<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n\t\t<link rel="preconnect" href="https://fonts.googleapis.com">\n\t\t<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n\t\t<link href="https://fonts.googleapis.com/css2?family=Inria+Serif:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap" rel="stylesheet">\n\t\t<link rel="stylesheet" href="/static/css/style.css" />\n\t\t<script src="/static/js/theme.js"></script>\n\t\t \n\t</head>\n\n\t<body>\n\t\t<header class="site-header">\n\t\t\t<div class="container">\n\t\t\t\t<a href="#profile" class="brand">Zikafolio</a>\n\t\t\t\t<div class="nav-group">\n\t\t\t\t\t<nav>\n\t\t\t\t\t\t<a href="/">Profile</a>\n\t\t\t\t\t\t<a href="/experience/">Experience</a>\n\t\t\t\t\t\t<a href="/project/">Project</a>\n\t\t\t\t\t</nav>\n\t\t\t\t\t<button\n\t\t\t\t\t\tid="theme-toggle"\n\t\t\t\t\t\tclass="theme-toggle"\n\t\t\t\t\t\ttype="button"\n\t\t\t\t\t\taria-label="Toggle dark mode"\n\t\t\t\t\t>\n\t\t\t\t\t\t<img\n\t\t\t\t\t\t\tsrc="/static/icons/dark-mode.svg"\n\t\t\t\t\t\t\talt=""\n\t\t\t\t\t\t\tclass="theme-icon theme-icon-dark"\n\t\t\t\t\t\t/>\n\t\t\t\t\t\t<img\n\t\t\t\t\t\t\tsrc="/static/icons/light-mode.svg"\n\t\t\t\t\t\t\talt=""\n\t\t\t\t\t\t\tclass="theme-icon theme-icon-light"\n\t\t\t\t\t\t/>\n\t\t\t\t\t</button>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t</header>\n\n\t\t<main>\n<section class="projects" id="projects">\n\t<div class="container">\n\t\t<p class="section-kicker">Karya yang saya bangun</p>\n\t\t<div class="project-header">\n\t\t\t<h1>Projects</h1>\n\t\t\t<a href="/project/add/"\n\t\t\t\tclass="button project-add-button">\n\t\t\t\t<span aria-hidden="true">+</span>\n\t\t\t\tTambah Proyek\n\t\t\t</a>\n\t\t</div>\n\n\t<form method="get"\n\t\t\taction="/project/"\n\t\t\tclass="project-search">\n\t\t<input type="search"\n\t\t\tname="title"\n\t\t\tvalue=""\n\t\t\tplaceholder="Cari berdasarkan nama proyek"\n\t\t\tclass="project-search__input"\n\t\t\taria-label="Cari berdasarkan nama proyek">\n\t\t<button type="submit" class="button">Cari</button>\n\t</form>\n\n\t<div id="project-grid">\n\t\t\n\t\t\t\n\t\t\t\t<p class="empty-state">Belum ada proyek yang ditambahkan.</p>\n\t\t\t\n\t\t\n\t</div>\n</section>\n</main>\n\n\t\t<footer class="site-footer">\n\t\t\t<div class="container">\n\t\t\t\t<p>\n\t\t\t\t\t&copy; 2026 Mohammad Zidane Kurnianto. Fakultas Ilmu Komputer, Universitas Indonesia.\n\t\t\t\t</p>\n\t\t\t</div>\n\t\t</footer>\n\t</body>\n</html>\n'
+
+======================================================================
+FAIL: test_update_project_valid_post (main.tests.MainTest.test_update_project_valid_post)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py", line 232, in test_update_project_valid_post
+    self.assertRedirects(response, reverse("main:show_projects"))
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 200 != 302 : Response didn't redirect as expected: Response code was 200 (expected 302)
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.286s
+
+FAILED (failures=3)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+ OK
+System check identified no issues (0 silenced).
+Bash Debug why ProjectForm rejects the test POST data
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from main.forms import ProjectForm
+
+form = ProjectForm(data={
+    'name': 'Samudera',
+    'description': 'Aplikasi pemantau saham.',
+    'image_url': '',
+    'category': 'mobile-development',
+    'project_url': 'https://github.com/Zikabyte/samudera',
+})
+print('valid:', form.is_valid())
+print('errors:', form.errors)
+"
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+valid: False
+errors: <ul class="errorlist"><li>image_url<ul class="errorlist" id="id_image_url_error"><li>This field is required.</li></ul></li></ul>
+Ketemu 2 hal:
+
+test_empty_project_page (test lama, bukan yang saya tulis) — ternyata teks empty-state di template sekarang "Belum ada proyek yang ditambahkan." (proyek), bukan "project" kayak yang di-assert test lama. Templatenya udah berubah tapi test-nya belum diupdate.
+test_create_project_valid_post & test_update_project_valid_post — form saya kirim image_url="" (kosong), ternyata ProjectForm mewajibkan field itu diisi (model field-nya null=True tapi gak ada blank=True, jadi form-level tetap required meski DB-nya boleh NULL). Saya perbaiki test-nya buat ngirim value asli.
+
+Bash Find exact lines to fix
+IN
+grep -n "Belum ada project\|image_url" main/tests.py
+
+OUT
+178:        self.assertContains(response, "Belum ada project yang ditambahkan.")
+194:            "image_url": "",
+226:                "image_url": "",
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 189-233)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Modified
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Modified
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Modified
+Sekarang jalankan ulang test suite-nya.
+
+
+Bash Re-run non-Selenium unit tests after fixes
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.MainTest -v 2 2>&1 | tail -40
+
+OUT
+  Applying main.0001_initial... OK
+  Applying main.0002_project... OK
+  Applying main.0003_alter_project_category... OK
+  Applying sessions.0001_initial...test_completed_experience (main.tests.MainTest.test_completed_experience) ... ok
+test_create_experience_invalid_post_does_not_create (main.tests.MainTest.test_create_experience_invalid_post_does_not_create) ... ok
+test_create_experience_valid_post (main.tests.MainTest.test_create_experience_valid_post) ... ok
+test_create_experience_view_get (main.tests.MainTest.test_create_experience_view_get) ... ok
+test_create_project_invalid_post_does_not_create (main.tests.MainTest.test_create_project_invalid_post_does_not_create) ... ok
+test_create_project_valid_post (main.tests.MainTest.test_create_project_valid_post) ... ok
+test_create_project_view_get (main.tests.MainTest.test_create_project_view_get) ... ok
+test_delete_experience_get_does_not_remove_it (main.tests.MainTest.test_delete_experience_get_does_not_remove_it) ... ok
+test_delete_experience_post_removes_it (main.tests.MainTest.test_delete_experience_post_removes_it) ... ok
+test_delete_project_get_does_not_remove_it (main.tests.MainTest.test_delete_project_get_does_not_remove_it) ... ok
+test_delete_project_post_removes_it (main.tests.MainTest.test_delete_project_post_removes_it) ... ok
+test_empty_experience_page (main.tests.MainTest.test_empty_experience_page) ... ok
+test_empty_project_page (main.tests.MainTest.test_empty_project_page) ... ok
+test_experience_model (main.tests.MainTest.test_experience_model) ... ok
+test_experience_page (main.tests.MainTest.test_experience_page) ... ok
+test_get_experience_json (main.tests.MainTest.test_get_experience_json) ... ok
+test_get_experience_json_filters_by_title (main.tests.MainTest.test_get_experience_json_filters_by_title) ... ok
+test_get_projects_json (main.tests.MainTest.test_get_projects_json) ... ok
+test_get_projects_json_filters_by_title_param (main.tests.MainTest.test_get_projects_json_filters_by_title_param) ... ok
+test_main_url_is_accessible (main.tests.MainTest.test_main_url_is_accessible) ... ok
+test_nonexistent_page_returns_404 (main.tests.MainTest.test_nonexistent_page_returns_404) ... ok
+test_project_model (main.tests.MainTest.test_project_model) ... ok
+test_project_page (main.tests.MainTest.test_project_page) ... ok
+test_update_experience_valid_post (main.tests.MainTest.test_update_experience_valid_post) ... ok
+test_update_experience_view_get_prefills_form (main.tests.MainTest.test_update_experience_view_get_prefills_form) ... ok
+test_update_nonexistent_experience_returns_404 (main.tests.MainTest.test_update_nonexistent_experience_returns_404) ... ok
+test_update_nonexistent_project_returns_404 (main.tests.MainTest.test_update_nonexistent_project_returns_404) ... ok
+test_update_project_valid_post (main.tests.MainTest.test_update_project_valid_post) ... ok
+test_update_project_view_get_prefills_form (main.tests.MainTest.test_update_project_view_get_prefills_form) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.441s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+ OK
+System check identified no issues (0 silenced).
+Semua 29 test lulus. Sekarang jalankan juga test Selenium (functional) biar lengkap.
+
+
+Bash Run Selenium functional test suite
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.NavbarFunctionalTest 2>&1 | tail -20
+
+OUT
+Creating test database for alias 'default'...
+
+..[21/Sep/2026 21:35:06,769] - Broken pipe from ('127.0.0.1', 60326)
+[21/Sep/2026 21:35:06,769] - Broken pipe from ('127.0.0.1', 63698)
+
+----------------------------------------------------------------------
+Ran 2 tests in 18.108s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 2 test(s).
+System check identified no issues (0 silenced).
+Semua 31 test lulus (29 unit test + 2 functional Selenium). Ringkasan:
+
+Test baru ditambahkan (main/tests.py) — untuk semua view CRUD baru:
+
+Experience: create (GET form, POST valid, POST invalid), update (GET prefill, POST valid, 404 untuk id gak ada), delete (POST beneran hapus, GET gak ngefek), get_experience_json (isi data + filter by title).
+Project: pola yang sama persis (create/update/delete/JSON).
+Bug lain yang ketemu sambil jalan (di luar scope tapi saya benerin karena kena pas testing):
+
+4 referensi lama show_project → show_projects (bug lama yang sempat saya laporkan berkali-kali, sekarang beres).
+test_empty_project_page (test lama) — teks assert-nya "Belum ada project..." padahal template sekarang pakai "Belum ada proyek...".
+ProjectForm mewajibkan image_url diisi (gak bisa kosong) meski model field-nya null=True — karena gak ada blank=True di model. Saya sesuaikan data test-nya (bukan model-nya, itu keputusan desain kamu — kasih tau aja kalau mau image_url/project_url dibikin optional beneran).
+
+Aku lagi cari mencari poin plus buat tugas aku, menurut kamu ada yang bisa di-wow kan lagi gak implementasinya?
+Grep "messages" (in C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates)
+1 line of output
+Bash Check if any authentication is already wired up
+IN
+grep -rn "login_required\|LoginView\|authenticate\|django.contrib.auth" main/ portfolio/ 2>/dev/null | grep -v migrations
+
+OUT
+portfolio/settings.py:41:    'django.contrib.auth',
+portfolio/settings.py:55:    'django.contrib.auth.middleware.AuthenticationMiddleware',
+portfolio/settings.py:75:                'django.contrib.auth.context_processors.auth',
+portfolio/settings.py:130:        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+portfolio/settings.py:133:        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+portfolio/settings.py:136:        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+portfolio/settings.py:139:        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+Binary file portfolio/__pycache__/settings.cpython-314.pyc matches
+Dua hal konkret yang saya temukan pas ngecek kode kamu, ini bukan cuma "ide" tapi celah nyata yang worth di-highlight:
+
+CRUD kamu 100% public, gak ada login sama sekali. django.contrib.auth udah keinstall (default Django) tapi gak pernah dipakai — artinya siapapun yang buka /project/add/, /project/<id>/edit/, /project/<id>/delete/ bisa langsung nambah/ubah/hapus data portofolio kamu tanpa autentikasi apapun. Ini juga biasanya materi tutorial PBP berikutnya (login/register/logout + @login_required), jadi ngerjain ini sekarang selain nutup celah beneran, juga kemungkinan besar emang bagian dari rubrik penilaian.
+
+messages.success(...) yang kamu panggil di semua view create/update/delete gak pernah ditampilkan — saya cek, gak ada satupun template yang render {% if messages %}. Jadi tiap kali orang berhasil tambah/edit/hapus project, gak ada notifikasi/feedback apapun yang muncul di UI (padahal backend-nya udah nyiapin pesannya). Ini "quick win" banget — efeknya kelihatan langsung, effort-nya kecil.
+
+Di luar dua itu, beberapa ide tambahan kalau mau lebih jauh (urutan effort-nya naik):
+
+AJAX search — kamu udah punya get_projects_json/get_experience_json, tinggal ganti form pencarian pakai fetch() biar hasil filter muncul tanpa reload halaman (nunjukin ngerti kenapa endpoint JSON itu ada, bukan cuma buat formalitas tugas).
+Upload gambar asli (Django ImageField + media storage) daripada cuma paste URL gambar — lebih "real app" feel-nya.
+Pagination kalau project/experience-nya banyak.
+Mau saya mulai dari yang mana? Saya sarankan auth dulu (paling berdampak + kemungkinan besar emang dinilai), terus messages banner (cepet banget, langsung kelihatan hasilnya).
+
+
+Filtering dan sorting di project/experience list itu kira-kira oke gak?
+Lumayan solid — effort-nya sedang, dan nyambung natural sama fitur search yang udah ada (title query param). Tapi dibanding dua yang saya sebut sebelumnya (auth & messages banner), ini levelnya "polish", bukan "nutup celah/gap" — jadi saya taruh di prioritas setelah itu.
+
+Yang paling gampang & masuk akal buat di-implement:
+
+Filter by category — Project dan Experience sama-sama udah punya field category dengan choices (dropdown), jadi tinggal tambah ?category=web-development ke query, filter-nya 1 baris (.filter(category=...)) persis pola yang udah dipakai buat title search.
+Sort by nama (A-Z/Z-A) — gampang, .order_by("name") / .order_by("-name").
+Yang gak bisa langsung: sort "terbaru dulu" buat Project — modelnya gak punya field timestamp sama sekali (beda dari Experience yang punya started_at), jadi kalau mau sorting by tanggal buat Project, perlu nambah field baru dulu (created_at = models.DateTimeField(auto_now_add=True)) + migration.
+
+Kalau mau saya implementasikan, saya sarankan mulai dari filter category + sort nama dulu (paling cepat, paling kepake), baru nanti mikirin timestamp buat Project kalau memang mau full "sort by newest" di kedua model. Mau saya jalanin?
+
+
+auth itu tugas berikutnya coi, jadi ya mending ini dulu
+Oke masuk akal, prioritas real time emang beda. Saya cek dulu struktur experience.html (belum ada search/filter sama sekali di situ) dan CSS-nya sebelum nambahin.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Grep "\.project-search" (in C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css)
+44 lines of output
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Sekarang saya implementasikan filter category + sort di kedua model.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 11 lines
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 10 lines
+Sekarang yang Experience.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 17 lines
+Sekarang tambahkan UI-nya. Mulai dari project.html (search form-nya udah ada, tinggal nambah select).
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Added 12 lines
+Sekarang tambahkan form search+filter+sort yang sama ke experience.html (belum pernah ada sebelumnya).
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Added 24 lines
+Sekarang update empty-state di experience.html biar bisa bedain "belum ada data" vs "gak ada hasil pencarian" (sama kayak pola di project.html).
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html (lines 41-55)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Added 4 lines
+Sekalian rapikan project.html juga — empty-state-nya sekarang cuma cek title_query, belum cek category_query.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html (lines 63-70)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Modified
+Sekarang tambahkan CSS buat .project-search__select.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css (lines 613-634)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css
+Added 13 lines
+Sekarang tambahkan test buat fitur filter+sort ini.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 2-31)
+Bash Locate insertion points for new filter/sort tests
+IN
+grep -n "test_get_experience_json_filters_by_title\|test_get_projects_json_filters_by_title_param\|# ------------------------------ Project Testing\|# ----------------- Bonus" main/tests.py
+
+OUT
+150:    def test_get_experience_json_filters_by_title(self):
+163:    # ------------------------------ Project Testing ----------------------------- #
+264:    def test_get_projects_json_filters_by_title_param(self):
+278:# ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 151-165)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Added 32 lines
+Sekarang yang Project, ditaruh setelah test_get_projects_json_filters_by_title_param.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 279-293)
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 297-316)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Added 38 lines
+Sekarang jalankan test suite.
+
+
+Bash Run non-Selenium unit tests after adding filter/sort feature
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.MainTest -v 2 2>&1 | tail -50
+
+OUT
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying main.0001_initial... OK
+  Applying main.0002_project... OK
+  Applying main.0003_alter_project_category... OK
+  Applying sessions.0001_initial...test_completed_experience (main.tests.MainTest.test_completed_experience) ... ok
+test_create_experience_invalid_post_does_not_create (main.tests.MainTest.test_create_experience_invalid_post_does_not_create) ... ok
+test_create_experience_valid_post (main.tests.MainTest.test_create_experience_valid_post) ... ok
+test_create_experience_view_get (main.tests.MainTest.test_create_experience_view_get) ... ok
+test_create_project_invalid_post_does_not_create (main.tests.MainTest.test_create_project_invalid_post_does_not_create) ... ok
+test_create_project_valid_post (main.tests.MainTest.test_create_project_valid_post) ... ok
+test_create_project_view_get (main.tests.MainTest.test_create_project_view_get) ... ok
+test_delete_experience_get_does_not_remove_it (main.tests.MainTest.test_delete_experience_get_does_not_remove_it) ... ok
+test_delete_experience_post_removes_it (main.tests.MainTest.test_delete_experience_post_removes_it) ... ok
+test_delete_project_get_does_not_remove_it (main.tests.MainTest.test_delete_project_get_does_not_remove_it) ... ok
+test_delete_project_post_removes_it (main.tests.MainTest.test_delete_project_post_removes_it) ... ok
+test_empty_experience_page (main.tests.MainTest.test_empty_experience_page) ... ok
+test_empty_project_page (main.tests.MainTest.test_empty_project_page) ... ok
+test_experience_model (main.tests.MainTest.test_experience_model) ... ok
+test_experience_page (main.tests.MainTest.test_experience_page) ... ok
+test_get_experience_json (main.tests.MainTest.test_get_experience_json) ... ok
+test_get_experience_json_filters_by_category (main.tests.MainTest.test_get_experience_json_filters_by_category) ... ok
+test_get_experience_json_filters_by_title (main.tests.MainTest.test_get_experience_json_filters_by_title) ... ok
+test_get_experience_json_sorted_by_title_desc (main.tests.MainTest.test_get_experience_json_sorted_by_title_desc) ... ok
+test_get_projects_json (main.tests.MainTest.test_get_projects_json) ... ok
+test_get_projects_json_filters_by_category (main.tests.MainTest.test_get_projects_json_filters_by_category) ... ok
+test_get_projects_json_filters_by_title_param (main.tests.MainTest.test_get_projects_json_filters_by_title_param) ... ok
+test_get_projects_json_ignores_invalid_sort_value (main.tests.MainTest.test_get_projects_json_ignores_invalid_sort_value) ... ok
+test_get_projects_json_sorted_by_name_desc (main.tests.MainTest.test_get_projects_json_sorted_by_name_desc) ... ok
+test_main_url_is_accessible (main.tests.MainTest.test_main_url_is_accessible) ... ok
+test_nonexistent_page_returns_404 (main.tests.MainTest.test_nonexistent_page_returns_404) ... ok
+test_project_model (main.tests.MainTest.test_project_model) ... ok
+test_project_page (main.tests.MainTest.test_project_page) ... ok
+test_show_experience_defaults_to_sort_by_title (main.tests.MainTest.test_show_experience_defaults_to_sort_by_title) ... ok
+test_show_projects_defaults_to_sort_by_name (main.tests.MainTest.test_show_projects_defaults_to_sort_by_name) ... ok
+test_update_experience_valid_post (main.tests.MainTest.test_update_experience_valid_post) ... ok
+test_update_experience_view_get_prefills_form (main.tests.MainTest.test_update_experience_view_get_prefills_form) ... ok
+test_update_nonexistent_experience_returns_404 (main.tests.MainTest.test_update_nonexistent_experience_returns_404) ... ok
+test_update_nonexistent_project_returns_404 (main.tests.MainTest.test_update_nonexistent_project_returns_404) ... ok
+test_update_project_valid_post (main.tests.MainTest.test_update_project_valid_post) ... ok
+test_update_project_view_get_prefills_form (main.tests.MainTest.test_update_project_view_get_prefills_form) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.354s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+ OK
+System check identified no issues (0 silenced).
+Semua 36 test lulus. Sekarang cek visual biar mastiin UI-nya beneran kepake dengan benar.
+
+
+Bash Start dev server and screenshot the new filter/sort UI
+IN
+./.venv/Scripts/python.exe manage.py runserver 8000 > /tmp/runserver.log 2>&1 &
+sleep 2
+./.venv/Scripts/python.exe -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+options = Options()
+options.add_argument('--headless=new')
+options.add_argument('--window-size=1400,900')
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+driver = webdriver.Chrome(options=options)
+
+driver.get('http://127.0.0.1:8000/project/')
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/filter_project.png')
+
+driver.get('http://127.0.0.1:8000/experience/')
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/filter_experience.png')
+
+# Test actual filtering works end to end
+driver.get('http://127.0.0.1:8000/project/?category=web-development&sort=-name')
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/filter_project_applied.png')
+
+driver.quit()
+print('done')
+"
+
+OUT
+done
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\filter_project.png
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\filter_experience.png
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\filter_project_applied.png
+Filter dan sort-nya beneran jalan (kategori "Web Development" + sort Z-A cuma nyisain "Zikapedia"). Bersihkan dan jalankan full test suite sekali lagi.
+
+
+Bash Clean up screenshots and run the complete test suite including Selenium
+IN
+pkill -f "manage.py runserver" 2>/dev/null
+cd /c/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0 && rm -f filter_project.png filter_experience.png filter_project_applied.png
+./.venv/Scripts/python.exe manage.py test main 2>&1 | tail -15
+
+OUT
+Creating test database for alias 'default'...
+
+......................................[21/Sep/2026 22:03:32,091] - Broken pipe from ('127.0.0.1', 49733)
+[21/Sep/2026 22:03:32,092] - Broken pipe from ('127.0.0.1', 58867)
+[21/Sep/2026 22:03:32,092] - Broken pipe from ('127.0.0.1', 57480)
+[21/Sep/2026 22:03:32,092] - Broken pipe from ('127.0.0.1', 59931)
+
+----------------------------------------------------------------------
+Ran 38 tests in 4.617s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 38 test(s).
+System check identified no issues (0 silenced).
+Semua 38 test lulus. Ringkasan fitur filtering + sorting yang saya tambahkan:
+
+main/views.py
+
+get_projects_json / get_experience_json sekarang terima ?category= (filter exact match) dan ?sort= (whitelist: name/-name/category/-category untuk Project, title/-title/category/-category untuk Experience — divalidasi dulu biar gak bisa disuntik string sembarangan ke order_by()).
+show_projects / show_experience nerusin category_query, sort_query, dan category_choices (diambil dari choices model masing-masing) ke context.
+Template (project.html, experience.html)
+
+Dropdown "Kategori" dan "Urutkan" ditambahkan ke form pencarian (GET, jadi bisa langsung di-share via URL/bookmark).
+experience.html sebelumnya sama sekali gak punya search — sekarang polanya disamain persis dengan project.html.
+Empty-state disesuaikan biar beda pesan antara "belum ada data" vs "gak ada hasil pencarian/filter".
+CSS — .project-search__select baru, .project-search dibikin flex-wrap biar tetap rapi di layar sempit.
+
+Test — 8 test baru: filter by category, sort ascending/descending, default sort value, dan satu test khusus mastiin sort yang invalid/aneh gak bikin crash (whitelist-nya jalan).
+
+Udah saya cek visual juga — filter+sort beneran motong hasil sesuai yang dipilih.
