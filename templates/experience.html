@@ -46,8 +46,12 @@
 				{% endif %}
 
 				<div class="project-actions">
+					{% if perms.main.change_experience %}
 					<a href="{% url 'main:update_experience' experience.id %}" class="button button-secondary">Edit</a>
+					{% endif %}
+					{% if perms.main.delete_experience %}
 					{% include "components/experience_delete_modal.html" with experience=experience %}
+					{% endif %}
 				</div>
 			</article>
 			{% empty %}

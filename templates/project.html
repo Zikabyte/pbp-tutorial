@@ -6,7 +6,7 @@
 		<p class="section-kicker">Karya yang saya bangun</p>
 		<div class="project-header">
 			<h1>Projects</h1>
-			{% if user.is_superuser %}
+			{% if perms.main.add_project %}
 			<a href="{% url 'main:create_project' %}"
 				class="button project-add-button">
 				<span aria-hidden="true">+</span>
@@ -61,13 +61,13 @@
 				<div class="project-actions">
 					{% include "components/project_star.html" with project=project %}
 					
-					{% if user.is_superuser %}
+					{% if perms.main.change_project %}
 					<a href="{% url 'main:update_project' project.id %}" class="button button-secondary">Edit</a>
-					{% endif %} 
-					
-					{% if user.is_superuser %}
+					{% endif %}
+
+					{% if perms.main.delete_project %}
 					{% include "components/project_delete_modal.html" with project=project %}
-					{% endif %} 
+					{% endif %}
 				</div>
 			</div>
 		</article>
