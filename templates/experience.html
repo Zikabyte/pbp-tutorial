@@ -46,6 +46,8 @@
 				{% endif %}
 
 				<div class="project-actions">
+					{% include "components/experience_star.html" with experience=experience %}
+
 					{% if perms.main.change_experience %}
 					<a href="{% url 'main:update_experience' experience.id %}" class="button button-secondary">Edit</a>
 					{% endif %}
