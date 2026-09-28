@@ -131,3 +131,5 @@ AI digunakan terutama untuk tugas repetitif (seperti writing tests), implementas
 - Menjalankan Claude Code dalam manual approval mode (bukan auto-accept), sehingga setiap perubahan/edit yang diajukan AI harus ditinjau dan disetujui secara eksplisit satu per satu.
 - Semua kode hasil AI ditinjau dan diuji secara manual sebelum di-commit.
 - Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).
+
+### Tugas 4
