@@ -15,13 +15,16 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed         # seed database with Experience & Project data
+
+# seed database with Experiences, Projects, and the Editor Group
+python manage.py seed
+
 python manage.py runserver
 ```
 
 ### Seed data
 
-`python manage.py seed` populates the database with `Experience` and `Project` data used in this portfolio (FisioMate, GARDA NLP, Zikapedia, Samudera, etc.). The data itself is located in `main/management/commands/seed.py`, so simply edit it if you want to change it
+`python manage.py seed` populates the database with `Experience` and `Project` data used in this portfolio (FisioMate, GARDA NLP, Zikapedia, Samudera, etc.). Additionally, the seeder also adds the `Editor` user group. The data itself is located in `main/management/commands/seed.py`, so simply edit it if you want to change it
 
 ## Dependencies
 
@@ -140,7 +143,7 @@ Sesuai dengan spesifikasi yang diminta oleh Tugas 4 dan Tutorial 4, telah diimpl
 
 - **Visitor (pengunjung situs yang belum login)**, dapat membaca semua data, tetapi ketika memanggil endpoint untuk star, create, edit, dan delete, situs akan redirect ke halaman login
 - **Regular user**, bisa membaca semua data dan star, tetapi tidak bisa create, edit, dan delete tanpa peran khusus (mendapat HTTP 403 jika tetap mencobanya)
-- **Editor**, peran baru yang diimplementasikan melalui Django Group & Permission (dibuat dan di-assign melalui Django Admin). Editor punya semua permission regular user, tetapi tidak bisa membuat atau menghapus
+- **Editor**, peran baru yang diimplementasikan melalui Django Group & Permission (dibuat dan di-assign melalui Django Admin). Editor punya semua permission regular user, tetapi tidak bisa membuat atau menghapus (dapat di-create dengan command `python manage.py seed`)
 - **Superuser**, yang memiliki permission penuh
 
 Untuk mendukungnya, setiap view yang sensitif dilindingi oleh dekorator `@login_required` dan juga pengecek `request.user.has_perm(...)`.
@@ -161,7 +164,8 @@ Seperti tugas sebelumnya, AI digunakan terutama untuk tugas repetitif (seperti w
 
 1. Write unit test untuk fungsionalitas auth, API safety, dan stars.
 2. Implementasi fitur star-based filtering di project dan experience list page dan hamburger navbar
-3. Debugging
+3. Implementasi seeder untuk create group `Editor`
+4. Debugging
 
 ##### Strategi Prompting
 

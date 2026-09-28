@@ -762,3 +762,91 @@ Backend (main/views.py) — get_projects_json/get_experience_json dan show_proje
 UI — toggle icon bintang (★) di form pencarian, gaya sama kayak tombol star di card (outline abu-abu → solid biru pas aktif), pakai :has(input:checked) biar gak butuh JS. Checkbox aslinya disembunyikan visual (clip) tapi tetap accessible lewat aria-label/title di <label>-nya — gak ada teks yang ke-render di DOM sesuai permintaan kamu. Cuma muncul buat user yang login.
 
 Test baru (3, di StarTest) — filter cuma nunjukin project/experience yang di-star user yang login, dan filter diabaikan buat anonymous.
+Silakan buatkan seeder buat user group Editor (can change projects and experiences)
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\management\commands\seed.py
+Saya extend main/management/commands/seed.py biar sekalian bikin group "Editor" + assign permission yang tepat — idempotent sama kayak pola yang udah ada (Experience/Project).
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\management\commands\seed.py
+Added 4 lines
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\management\commands\seed.py
+Added 17 lines
+Sekarang verifikasi — jalankan di database kosong buat mastiin beneran bikin group dengan permission yang bener.
+
+
+Bash Test seed command against a fresh empty database
+IN
+cp db.sqlite3 db.sqlite3.bak && rm db.sqlite3 && ./.venv/Scripts/python.exe manage.py migrate --no-input 2>&1 | tail -3 && echo "---SEED---" && ./.venv/Scripts/python.exe manage.py seed
+
+OUT
+  Applying main.0004_project_starred_by... OK
+  Applying main.0005_experience_starred_by... OK
+  Applying sessions.0001_initial... OK
+---SEED---
+Experience 'Asisten DDP-1' created!
+Experience 'Member of Mobile Development SIG RISTEK 2026' created!
+Project 'FisioMate' created!
+Project 'GARDA NLP' created!
+Project 'Zikapedia' created!
+Project 'Samudera' created!
+Group 'Editor' created! (permissions: change_experience, change_project)
+Seeding complete.
+Bash Run seed again to confirm idempotency
+IN
+./.venv/Scripts/python.exe manage.py seed
+
+OUT
+Experience 'Asisten DDP-1' already exists.
+Experience 'Member of Mobile Development SIG RISTEK 2026' already exists.
+Project 'FisioMate' already exists.
+Project 'GARDA NLP' already exists.
+Project 'Zikapedia' already exists.
+Project 'Samudera' already exists.
+Group 'Editor' already exists. (permissions: change_experience, change_project)
+Seeding complete.
+Idempotent, jalan bersih. Sekarang kembalikan database dev asli kamu.
+
+
+Bash Restore original dev database and run seed on it too
+IN
+rm db.sqlite3 && mv db.sqlite3.bak db.sqlite3 && ./.venv/Scripts/python.exe manage.py seed
+
+OUT
+Experience 'Asisten DDP-1' already exists.
+Experience 'Member of Mobile Development SIG RISTEK 2026' already exists.
+Project 'FisioMate' already exists.
+Project 'GARDA NLP' already exists.
+Project 'Zikapedia' already exists.
+Project 'Samudera' already exists.
+Group 'Editor' created! (permissions: change_experience, change_project)
+Seeding complete.
+Bash Confirm test suite still passes after seed.py changes
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.MainTest main.tests.AuthTest main.tests.PermissionTest main.tests.StarTest main.tests.ApiSecurityTest 2>&1 | tail -10
+
+OUT
+Creating test database for alias 'default'...
+
+..............................................................
+----------------------------------------------------------------------
+Ran 62 tests in 28.238s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 62 test(s).
+System check identified no issues (0 silenced).
+Beres. Ringkasan:
+
+main/management/commands/seed.py — nambah seed_editor_group(), jalan otomatis tiap python manage.py seed:
+
+Group.objects.get_or_create(name="Editor")
+Assign permission change_project + change_experience ke group itu (pakai .set(), jadi selalu ke-sync ke set yang benar tiap dijalankan ulang — kalau suatu saat permission-nya ke-otak-atik manual, tinggal seed lagi buat balikin ke kondisi benar).
+Udah saya tes di database kosong (simulasi asdos yang baru clone) — group "Editor" beneran kebuat dengan permission yang tepat, dan idempotent (jalan 2x gak duplikat/error). Database dev kamu sendiri juga udah ke-seed sekarang.
+
+Ini jawab pertanyaan kamu sebelumnya — sekarang asdos yang clone repo tinggal:
+
+
+python manage.py migrate
+python manage.py seed
+dan group "Editor" udah siap dipakai, gak perlu klak-klik manual di Admin lagi (walau tetep bisa kalau mau nambah user lain ke situ).
