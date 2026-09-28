@@ -36,6 +36,12 @@
 			<option value="category" {% if sort_query == "category" %}selected{% endif %}>Kategori (A-Z)</option>
 			<option value="-category" {% if sort_query == "-category" %}selected{% endif %}>Kategori (Z-A)</option>
 		</select>
+		{% if user.is_authenticated %}
+		<label class="star-filter-toggle" title="Hanya yang saya star" aria-label="Hanya yang saya star">
+			<input type="checkbox" name="starred" value="1" {% if starred_query %}checked{% endif %}>
+			<span aria-hidden="true">★</span>
+		</label>
+		{% endif %}
 		<button type="submit" class="button">Cari</button>
 	</form>
 
@@ -72,7 +78,7 @@
 			</div>
 		</article>
 		{% empty %}
-			{% if title_query or category_query %}
+			{% if title_query or category_query or starred_query %}
 				<p class="empty-state">Tidak ada proyek yang cocok dengan pencarian.</p>
 			{% else %}
 				<p class="empty-state">Belum ada proyek yang ditambahkan.</p>

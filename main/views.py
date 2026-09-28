@@ -48,6 +48,7 @@ def show_projects(request):
     sort_query = request.GET.get("sort", "name").strip()
     if sort_query not in PROJECT_SORT_OPTIONS:
         sort_query = "name"
+    starred_query = request.GET.get("starred") == "1" and request.user.is_authenticated
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
@@ -55,6 +56,7 @@ def show_projects(request):
         "title_query": title_query,
         "category_query": category_query,
         "sort_query": sort_query,
+        "starred_query": starred_query,
         "category_choices": Project.PROJECT_CATEGORIES_CHOICES,
     }
     return render(request, "project.html", context)
@@ -103,6 +105,7 @@ def get_projects_json(request):
     sort_query = request.GET.get("sort", "name").strip()
     if sort_query not in PROJECT_SORT_OPTIONS:
         sort_query = "name"
+    starred_only = request.GET.get("starred") == "1" and request.user.is_authenticated
 
     projects = Project.objects.all()
 
@@ -111,6 +114,9 @@ def get_projects_json(request):
 
     if category_query:
         projects = projects.filter(category=category_query)
+
+    if starred_only:
+        projects = projects.filter(starred_by=request.user)
 
     projects = projects.order_by(sort_query)
 
@@ -153,6 +159,7 @@ def show_experience(request):
     sort_query = request.GET.get("sort", "title").strip()
     if sort_query not in EXPERIENCE_SORT_OPTIONS:
         sort_query = "title"
+    starred_query = request.GET.get("starred") == "1" and request.user.is_authenticated
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
@@ -160,6 +167,7 @@ def show_experience(request):
         "title_query": title_query,
         "category_query": category_query,
         "sort_query": sort_query,
+        "starred_query": starred_query,
         "category_choices": Experience.EXPERIENCE_CHOICES,
     }
     return render(request, "experience.html", context)
@@ -170,6 +178,7 @@ def get_experience_json(request):
     sort_query = request.GET.get("sort", "title").strip()
     if sort_query not in EXPERIENCE_SORT_OPTIONS:
         sort_query = "title"
+    starred_only = request.GET.get("starred") == "1" and request.user.is_authenticated
 
     experiences = Experience.objects.all()
 
@@ -178,6 +187,9 @@ def get_experience_json(request):
 
     if category_query:
         experiences = experiences.filter(category=category_query)
+
+    if starred_only:
+        experiences = experiences.filter(starred_by=request.user)
 
     experiences = experiences.order_by(sort_query)
 

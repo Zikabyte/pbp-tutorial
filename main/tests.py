@@ -608,6 +608,48 @@ class StarTest(TestCase):
         self.client.post(star_url)
         self.assertFalse(self.experience.starred_by.filter(pk=self.user.pk).exists())
 
+    # ------------------------------ Filter starred-only ----------------------------- #
+    def test_starred_filter_only_shows_projects_i_starred(self):
+        other_project = Project.objects.create(
+            name="Proyek Lain",
+            description="Deskripsi.",
+            category="general",
+        )
+        self.project.starred_by.add(self.user)
+        self.client.login(username="starrer", password="pass12345")
+
+        response = self.client.get(reverse("main:show_projects"), {"starred": "1"})
+
+        self.assertContains(response, self.project.name)
+        self.assertNotContains(response, other_project.name)
+
+    def test_starred_filter_only_shows_experiences_i_starred(self):
+        other_experience = Experience.objects.create(
+            title="Pengalaman Lain",
+            description="Deskripsi.",
+            category="freelance",
+        )
+        self.experience.starred_by.add(self.user)
+        self.client.login(username="starrer", password="pass12345")
+
+        response = self.client.get(reverse("main:show_experience"), {"starred": "1"})
+
+        self.assertContains(response, self.experience.title)
+        self.assertNotContains(response, other_experience.title)
+
+    def test_starred_filter_ignored_for_anonymous_user(self):
+        self.project.starred_by.add(self.user)
+        other_project = Project.objects.create(
+            name="Proyek Lain",
+            description="Deskripsi.",
+            category="general",
+        )
+
+        response = self.client.get(reverse("main:show_projects"), {"starred": "1"})
+
+        self.assertContains(response, self.project.name)
+        self.assertContains(response, other_project.name)
+
 
 # --------------------------- API Data Safety and Integrity -------------------------- #
 class ApiSecurityTest(TestCase):
