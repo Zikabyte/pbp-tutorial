@@ -1,0 +1,764 @@
+
+image.png
+1004×94
+
+image.png
+940×1094
+
+image.png
+1998×276
+Oke, ada beberapa masalah tentang UI-nya, karena ada beberapa yang masih belum terlalu di-stylize atau masih belum diadaptasikan dalam darkmode:
+- action Button both di experience dan project (check discreen shot aku, apalagi button edit dan star/unstar) belum terlalu mantep di darkmode
+-  Halaman dengan fields input perlu di-clean up, dan juga diadaptasikan di darkmode -> login, register, edit, create
+- Di tablet/mobile screen, kenapa di experience list dan projects list search bar dan filter/sort selectorya jadi tinggi gini? (coba lihat screenshot), oh ya ini boleh dipercantik juga gak ya? Both input dan selectornya
+- Navbar di tablet/mobile screen juga clashing gitu (lihat screenshot), bisakah kamu adjust? (kalau berani, ya navbarnya beda kalau mobile screen gitu) nah ini juga beutify dong, sekarang agak generic kan?
+Show more
+Oke, ini beberapa masalah nyata yang saya bisa lihat penyebabnya dari screenshot. Saya baca dulu semua file yang relevan sebelum mulai benerin.
+
+
+Ketemu semua akar masalahnya. Ringkasan sebelum saya mulai:
+
+Tombol Edit/Star (default) gelap di dark mode — .button-secondary dan .button-star pakai background: var(--ink) + teks putih dari .button. Di dark mode, --ink itu warna terang (krem), jadi teks putih di atas krem = nyaris gak keliatan.
+Form input/select gak theme-aware — .form-group input/textarea gak ada background/color eksplisit (ikut default browser = putih), dan <select> kategori malah gak ke-style sama sekali.
+Search bar/select mobile jadi tinggi banget — ini bug CSS: .project-search__input/__select punya flex: 1 1 200px / flex: 0 1 170px. Pas mobile masuk flex-direction: column, angka 200px/170px itu jadi tinggi (bukan lebar lagi), makanya jadi kotak raksasa.
+Navbar mobile mentok/gak ada breakpoint sama sekali — sekarang isinya makin banyak (Profile, Experience, Projects, username, Logout, theme toggle) tapi CSS-nya gak punya adaptasi mobile apapun.
+Saya kerjain satu-satu, mulai dari CSS. Berani, saya bikinin hamburger menu proper buat navbar mobile-nya.
+
+
+Sekarang tambahkan media query buat collapse navbar-nya jadi dropdown mobile.
+
+
+Sekarang benerin .button-secondary dan .button-star biar theme-aware.
+
+
+Sekarang benerin form input/select (dark mode + bersihin border yang kelewat rame).
+
+
+Sekarang fix bug tinggi di search bar mobile + samain jadi theme-aware.
+
+
+Sekarang fix bug utama-nya (flex-basis jadi height di mobile) di media query yang udah ada.
+
+
+Sekarang update base.html — tambahin tombol hamburger + id="nav-menu" buat di-toggle.
+
+
+Sekarang tambahin nav.js buat toggle-nya, dan link di base.html.
+
+
+Sekarang benerin login.html dan register.html — sekalian saya bersihin bug lama (<main> bersarang + title block yang salah) karena saya udah di file yang sama.
+
+
+Sekalian cek projects_form.html/experience_form.html (buat "edit, create") masih bersih, dan tambahin styling buat .form-message/.form-help yang belum ada CSS-nya.
+
+
+Sekarang verifikasi semuanya lewat screenshot — desktop dark mode (tombol), mobile (search bar + navbar hamburger), dan form login.
+
+
+Login page-nya udah rapi & theme-aware di dua mode. Tapi saya notice footer-nya masih nampilin bug lama — "© 2026 Burhan" (harusnya nama kamu). Saya lanjut cek mobile dulu, nanti saya benerin ini juga.
+
+
+Mobile-nya udah jauh lebih baik — search bar normal, hamburger menu jalan mulus (icon berubah jadi X pas dibuka). Sekarang saya cek tombol Edit/Hapus dark mode dengan login sebagai superuser (soalnya tombol itu cuma muncul buat yang berhak).
+
+
+Sempurna — tombol Edit/Star sekarang kelihatan jelas di dark mode. Sekarang saya bersihin data percobaan, benerin bug "Burhan" yang saya temukan, dan jalanin test suite.
+
+
+Sekarang jalankan test suite (unit dulu, cepat) buat mastiin gak ada regresi dari semua perubahan CSS/HTML/JS ini.
+
+
+Semua beres. Ringkasan perbaikan UI:
+
+1. Tombol Edit/Star gelap di dark mode — .button-secondary dan .button-star tadinya background: var(--ink) (jadi krem terang di dark mode) + teks putih dari .button = nyaris invisible. Diganti jadi background: var(--card-bg) + border + color: var(--ink) (theme-aware), sama pola yang udah kepake di .theme-toggle/.carousel-btn sebelumnya.
+
+2. Form login/register/edit/create — <input>, <select>, <textarea> sekarang eksplisit background: var(--card-bg); color: var(--ink) (sebelumnya <select> malah gak ke-style sama sekali, dan input border-nya selalu full-accent bahkan pas gak fokus — udah dibersihin jadi border: var(--line) netral, aksen cuma muncul pas :focus). Sekalian saya benerin bug lama login.html/register.html (<main> bersarang + {% block meta %} yang gak pernah kepake buat title tab), dan bug placeholder "Burhan" di footer halaman login.
+
+3. Search bar/select mobile jadi raksasa — ini bug: flex: 1 1 200px/flex: 0 1 170px itu dimaksudkan sebagai lebar, tapi begitu flex-direction jadi column di mobile, angka itu malah dibaca sebagai tinggi. Fix: reset flex: none; width: 100%; khusus di breakpoint mobile.
+
+4. Navbar mobile — sebelumnya gak ada breakpoint sama sekali (mentok berantakan). Sekarang ada hamburger menu proper: ikon 3 garis yang animasi jadi X pas dibuka, dropdown penuh berisi semua nav link + theme toggle, auto-close kalau klik link atau klik di luar menu (static/js/nav.js, baru).
+
+Semua saya verifikasi visual langsung (screenshot dark+light, desktop+mobile, login sebagai superuser buat liat tombol Edit/Hapus/Star) — bukan cuma baca kode. manage.py check juga bersih.
+
+Hehe, berdasarkan semua hal yang baru, bisakah kamu write unit testnya?
+Sebelum nulis test baru, saya cek dulu state test suite yang sekarang (soalnya udah banyak commit baru sejak terakhir saya cek).
+
+
+Ketemu — masih 16 failure yang sama (belum berubah dari sebelumnya), karena setUp belum login sebagai user manapun padahal semua view CRUD sekarang butuh login+permission. Saya perbaiki setUp (login sebagai superuser/owner, sesuai asumsi test-test lama) sekalian nulis test baru buat: auth (register/login/logout), matrix permission (anonymous/regular/editor/owner), toggle star (project & experience), dan JSON security (starred_by cuma buat superuser). Ini otomatis nge-fix 16 failure lama juga sebagai efek samping yang sah.
+
+
+Sekarang tambahkan 4 kelas test baru sebelum bagian Selenium.
+
+
+Sekarang jalankan test suite (non-Selenium dulu) buat mastiin semuanya lulus.
+
+
+Dua test auth gagal karena salah paham perilaku follow=True — cookie yang di-set di response redirect gak ke-carry ke response.cookies pas udah di-follow ke halaman akhir. Saya perbaiki, cek langsung di response redirect-nya + session.
+
+
+Sekarang jalankan ulang.
+
+
+Sekarang jalankan juga test Selenium (functional) biar full suite ke-cover.
+
+
+Ketemu 1 lagi — bug lama yang gak berhubungan sama kerjaan hari ini: link navbar diganti dari "Project" jadi "Projects" beberapa commit lalu, tapi test Selenium-nya masih nyari teks lama persis. Saya benerin sekalian.
+
+
+Sekarang jalankan full suite sekali lagi buat konfirmasi semua hijau.
+
+
+Semua 61 test lulus (bukan cuma yang baru). Ringkasan:
+
+Test baru ditambahkan (4 class baru):
+
+AuthTest — register (valid, password mismatch), login (valid credentials + cookie last_login, invalid credentials), logout (session + cookie ke-clear).
+PermissionTest — matrix lengkap 4 peran × Project/Experience: anonymous di-redirect ke login, user biasa dapat 403 di semua aksi tulis, Editor bisa update tapi 403 pas create/delete, owner (superuser) bisa create/update/delete.
+StarTest — anonymous gak bisa star (redirect login), user login bisa toggle star/unstar (project & experience), dan test khusus "star 2x gak dobel" (nge-tes unique constraint M2M).
+ApiSecurityTest — anonymous gak liat field starred_by di JSON, superuser liat lengkap dengan username-nya.
+Efek samping (perbaikan, bukan scope creep tapi prasyarat langsung):
+
+MainTest.setUp sekarang login sebagai superuser dulu — ini otomatis memperbaiki 16 test lama yang merah (yang emang nunggu "for later"), karena semua CRUD test itu emang nulis dengan asumsi akses penuh.
+1 baris di test Selenium (By.LINK_TEXT, "Project" → "Projects") — nyambung ke rename navbar yang udah terjadi beberapa commit lalu tapi belum ke-update di test-nya.
+Oh ya satu lagi deh, bisakah kamu buat sistem filter based on starred projects and experiences?
+Oke, saya tambahin toggle "Hanya yang saya star" di form pencarian — cuma muncul buat user yang login (karena kalau belum login gak mungkin punya star). Saya cek dulu file-file terkait.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Sekarang tambahkan filter starred di get_projects_json/get_experience_json + show_projects/show_experience.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 2 lines
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 4 lines
+Sekarang yang Experience — sama polanya.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 2 lines
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\views.py
+Added 4 lines
+Sekarang tambahkan UI checkbox-nya di project.html dan experience.html, plus CSS-nya.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Added 6 lines
+Sekarang update empty-state biar ikut cek starred_query.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Modified
+Sekarang yang sama di experience.html.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Added 6 lines
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Modified
+Sekarang tambahkan CSS buat .project-search__checkbox biar rapi (label + checkbox, konsisten sama input/select yang lain).
+
+
+Bash Locate project-search__select CSS block for consistent insertion point
+IN
+grep -n "project-search__select {" -A 10 static/css/style.css
+
+OUT
+708:.project-search__select {
+709-	flex: 0 1 170px;
+710-	min-width: 0;
+711-	padding: 0.7rem 0.9rem;
+712-	border: 1px solid var(--line);
+713-	border-radius: var(--radius);
+714-	background: var(--card-bg);
+715-	color: var(--ink);
+716-	font: inherit;
+717-	transition: border-color 0.2s ease, background-color 0.2s ease;
+718-}
+--
+919:	.project-search__select {
+920-		flex: none;
+921-		width: 100%;
+922-	}
+923-
+924-	.project-search .button {
+925-		width: 100%;
+926-	}
+927-
+928-	.project-delete-modal {
+929-		align-items: flex-end;
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css (lines 719-728)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css
+Added 22 lines
+Sekalian tambahin ke media query mobile biar full-width juga.
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css (lines 926-940)
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css (lines 940-949)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css
+Added 1 line
+Sekarang verifikasi lewat test client — mastiin filter beneran cuma nunjukin yang di-star sama user yang login.
+
+
+Bash Verify starred-only filter works for logged-in users and is ignored for anonymous
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.test import Client
+from django.test.utils import override_settings
+from django.urls import reverse
+from django.contrib.auth.models import User
+from main.models import Project
+
+with override_settings(ALLOWED_HOSTS=['*']):
+    p1 = Project.objects.create(name='Distar', description='d', category='general')
+    p2 = Project.objects.create(name='TidakDistar', description='d', category='general')
+
+    u = User.objects.create_user(username='_tmp_star_filter', password='pass12345')
+    p1.starred_by.add(u)
+
+    c = Client()
+    c.login(username='_tmp_star_filter', password='pass12345')
+
+    resp = c.get(reverse('main:show_projects'), {'starred': '1'})
+    names = [p.name for p in resp.context['project_list']]
+    print('Filter starred=1 (login):', names)
+
+    resp2 = c.get(reverse('main:show_projects'))
+    names2 = [p.name for p in resp2.context['project_list']]
+    print('Tanpa filter (login):', names2)
+
+    anon = Client()
+    resp3 = anon.get(reverse('main:show_projects'), {'starred': '1'})
+    names3 = [p.name for p in resp3.context['project_list']]
+    print('Filter starred=1 (anonymous, harus diabaikan):', names3)
+
+    p1.delete(); p2.delete()
+    User.objects.filter(username='_tmp_star_filter').delete()
+    print('cleaned up')
+" 2>&1 | grep -v "^\["
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+Traceback (most recent call last):
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\manage.py", line 22, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\__init__.py", line 443, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\__init__.py", line 437, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\base.py", line 422, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\base.py", line 466, in execute
+    output = self.handle(*args, **options)
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\commands\shell.py", line 261, in handle
+    exec(options["command"], {**globals(), **self.get_namespace(**options)})
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 19, in <module>
+TypeError: 'NoneType' object is not subscriptable
+Bash Retry verification with test environment signal properly set up
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.test import Client
+from django.test.utils import override_settings, setup_test_environment
+from django.urls import reverse
+from django.contrib.auth.models import User
+from main.models import Project
+
+setup_test_environment()
+
+with override_settings(ALLOWED_HOSTS=['*']):
+    p1 = Project.objects.create(name='Distar', description='d', category='general')
+    p2 = Project.objects.create(name='TidakDistar', description='d', category='general')
+
+    u = User.objects.create_user(username='_tmp_star_filter', password='pass12345')
+    p1.starred_by.add(u)
+
+    c = Client()
+    c.login(username='_tmp_star_filter', password='pass12345')
+
+    resp = c.get(reverse('main:show_projects'), {'starred': '1'})
+    names = [p.name for p in resp.context['project_list']]
+    print('Filter starred=1 (login):', names)
+
+    resp2 = c.get(reverse('main:show_projects'))
+    names2 = [p.name for p in resp2.context['project_list']]
+    print('Tanpa filter (login):', names2)
+
+    anon = Client()
+    resp3 = anon.get(reverse('main:show_projects'), {'starred': '1'})
+    names3 = [p.name for p in resp3.context['project_list']]
+    print('Filter starred=1 (anonymous, harus diabaikan):', names3)
+
+    p1.delete(); p2.delete()
+    User.objects.filter(username='_tmp_star_filter').delete()
+    print('cleaned up')
+" 2>&1 | grep -v "^\["
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+Traceback (most recent call last):
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 359, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: UNIQUE constraint failed: auth_user.username
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\manage.py", line 22, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\manage.py", line 18, in main
+    execute_from_command_line(sys.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\__init__.py", line 443, in execute_from_command_line
+    utility.execute()
+    ~~~~~~~~~~~~~~~^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\__init__.py", line 437, in execute
+    self.fetch_command(subcommand).run_from_argv(self.argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\base.py", line 422, in run_from_argv
+    self.execute(*args, **cmd_options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\base.py", line 466, in execute
+    output = self.handle(*args, **options)
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\core\management\commands\shell.py", line 261, in handle
+    exec(options["command"], {**globals(), **self.get_namespace(**options)})
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 14, in <module>
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\contrib\auth\models.py", line 180, in create_user
+    return self._create_user(username, email, password, **extra_fields)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\contrib\auth\models.py", line 168, in _create_user
+    user.save(using=self._db)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\contrib\auth\base_user.py", line 62, in save
+    super().save(**kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\models\base.py", line 904, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\models\base.py", line 996, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\models\base.py", line 1201, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, insert_fields, returning_fields, raw
+    )
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\models\base.py", line 1253, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\models\query.py", line 2118, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1935, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\backends\utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\utils.py", line 94, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\django\db\backends\sqlite3\base.py", line 359, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+django.db.utils.IntegrityError: UNIQUE constraint failed: auth_user.username
+Bash Clean up leftover test data from the failed verification attempt
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.contrib.auth.models import User
+from main.models import Project
+User.objects.filter(username='_tmp_star_filter').delete()
+Project.objects.filter(name__in=['Distar', 'TidakDistar']).delete()
+print('cleaned up leftovers')
+"
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+cleaned up leftovers
+Bash Verify starred-only filter using response content instead of context
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.test import Client
+from django.test.utils import override_settings
+from django.urls import reverse
+from django.contrib.auth.models import User
+from main.models import Project
+
+with override_settings(ALLOWED_HOSTS=['*']):
+    p1 = Project.objects.create(name='Distar', description='d', category='general')
+    p2 = Project.objects.create(name='TidakDistar', description='d', category='general')
+
+    u = User.objects.create_user(username='_tmp_star_filter', password='pass12345')
+    p1.starred_by.add(u)
+
+    c = Client()
+    c.login(username='_tmp_star_filter', password='pass12345')
+
+    html = c.get(reverse('main:show_projects'), {'starred': '1'}).content.decode()
+    print('Filter starred=1 (login) -> Distar ada?', 'Distar</h3>' in html, '| TidakDistar ada?', 'TidakDistar</h3>' in html)
+
+    html2 = c.get(reverse('main:show_projects')).content.decode()
+    print('Tanpa filter (login) -> Distar ada?', 'Distar</h3>' in html2, '| TidakDistar ada?', 'TidakDistar</h3>' in html2)
+
+    anon = Client()
+    html3 = anon.get(reverse('main:show_projects'), {'starred': '1'}).content.decode()
+    print('Filter starred=1 (anonymous, harus diabaikan) -> Distar ada?', 'Distar</h3>' in html3, '| TidakDistar ada?', 'TidakDistar</h3>' in html3)
+
+    p1.delete(); p2.delete()
+    User.objects.filter(username='_tmp_star_filter').delete()
+    print('cleaned up')
+" 2>&1 | grep -v "^\["
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+Filter starred=1 (login) -> Distar ada? True | TidakDistar ada? False
+Tanpa filter (login) -> Distar ada? True | TidakDistar ada? True
+Filter starred=1 (anonymous, harus diabaikan) -> Distar ada? True | TidakDistar ada? True
+cleaned up
+Semua tiga skenario bener. Sekarang jalankan test suite biar gak ada regresi, lalu tambah test permanen buat fitur ini.
+
+
+Bash Sanity check and run relevant test classes
+IN
+./.venv/Scripts/python.exe manage.py check 2>&1 && ./.venv/Scripts/python.exe manage.py test main.tests.MainTest main.tests.StarTest 2>&1 | tail -10
+
+OUT
+System check identified no issues (0 silenced).
+Creating test database for alias 'default'...
+
+........................................
+----------------------------------------------------------------------
+Ran 40 tests in 15.793s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 40 test(s).
+System check identified no issues (0 silenced).
+Sekarang tambahkan test permanen buat filter starred ini di StarTest.
+
+
+Bash Find StarTest class boundaries
+IN
+grep -n "class StarTest\|class ApiSecurityTest" main/tests.py
+
+OUT
+563:class StarTest(TestCase):
+613:class ApiSecurityTest(TestCase):
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py (lines 564-613)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests.py
+Added 42 lines
+Bash Run StarTest including new filter tests
+Reason: Masa checkboxnya "Hanya yang saya star"?? Itu awkward kali... Kenapa gak sekalian saja icon star? Atau karakter star gitu??
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.StarTest -v 2 2>&1 | tail -20
+
+Fair, itu emang canggung. Saya ganti jadi toggle icon bintang aja, gaya button yang sama kayak star di card.
+
+
+Bash Check if a visually-hidden utility class already exists
+IN
+grep -n "sr-only" static/css/style.css
+
+OUT
+(Bash completed with no output)
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html (lines 34-45)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Added 1 line
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html (lines 30-37)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Edit failed
+Reason: Eh "Hanya yang saya star" itu hapus aja textnya, gausah sampai di render di html-nya
+Oke, saya hapus teksnya total — cukup title/aria-label sebagai atribut aksesibilitas, gak ada teks yang di-render di DOM.
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\project.html
+Removed 1 line
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Modified
+Sekarang ganti CSS-nya — hapus .project-search__checkbox, tambahkan .star-filter-toggle yang gaya-nya kayak .button-star.
+
+
+Bash Find the checkbox CSS to replace
+IN
+grep -n "project-search__checkbox" static/css/style.css
+
+OUT
+726:.project-search__checkbox {
+741:.project-search__checkbox input {
+942:	.project-search__checkbox {
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css (lines 727-746)
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css (lines 746-750)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css
+Added 25 lines
+Sekarang update media query mobile-nya (referensi class lama).
+
+
+Bash Find remaining reference to old class name in media query
+IN
+grep -n "project-search__checkbox" static/css/style.css
+
+OUT
+967:	.project-search__checkbox {
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css (lines 961-974)
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\static\css\style.css
+Removed 1 line
+Sekarang verifikasi visual + test suite.
+
+
+Bash Sanity check and start dev server
+IN
+./.venv/Scripts/python.exe manage.py check 2>&1
+./.venv/Scripts/python.exe manage.py runserver 8000 > /tmp/runserver.log 2>&1 &
+sleep 2
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/project/
+
+OUT
+System check identified no issues (0 silenced).
+200
+Bash Create a temp user to preview the logged-in state of the toggle
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.contrib.auth.models import User
+u, created = User.objects.get_or_create(username='_tmp_preview_starfilter')
+u.set_password('previewpass123')
+u.save()
+print('ok', created)
+"
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+ok True
+Bash Screenshot the star filter toggle in unchecked and checked state
+IN
+./.venv/Scripts/python.exe -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
+
+options = Options()
+options.add_argument('--headless=new')
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+driver = webdriver.Chrome(options=options)
+driver.set_window_size(1200, 500)
+
+driver.get('http://127.0.0.1:8000/login/')
+driver.find_element(By.NAME, 'username').send_keys('_tmp_preview_starfilter')
+driver.find_element(By.NAME, 'password').send_keys('previewpass123')
+driver.find_element(By.XPATH, \"//button[@type='submit']\").click()
+time.sleep(0.3)
+driver.execute_script('localStorage.setItem(\"theme\",\"dark\"); document.documentElement.setAttribute(\"data-theme\",\"dark\");')
+
+driver.get('http://127.0.0.1:8000/project/')
+time.sleep(0.3)
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/v_star_toggle_off.png')
+
+driver.find_element(By.CSS_SELECTOR, '.star-filter-toggle input').click()
+time.sleep(0.2)
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/v_star_toggle_on.png')
+driver.quit()
+print('done')
+"
+
+OUT
+Exit code 1
+Traceback (most recent call last):
+  File "<string>", line 25, in <module>
+    driver.find_element(By.CSS_SELECTOR, '.star-filter-toggle input').click()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\selenium\webdriver\remote\webelement.py", line 112, in click
+    self._execute(Command.CLICK_ELEMENT)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\selenium\webdriver\remote\webelement.py", line 504, in _execute
+    return self._parent.execute(command, params)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 506, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\.venv\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.ElementClickInterceptedException: Message: element click intercepted: Element <input type="checkbox" name="starred" value="1"> is not clickable at point (912, 271). Other element would receive the click: <span aria-hidden="true">...</span>
+  (Session info: chrome=154.0.8037.57); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7e112be05+5a55]
+	chromedriver!(No symbol) [0x7ff7e1053230]
+	chromedriver!(No symbol) [0x7ff7e0e76e4d]
+	chromedriver!(No symbol) [0x7ff7e0eda423]
+	chromedriver!(No symbol) [0x7ff7e0ed8033]
+	chromedriver!(No symbol) [0x7ff7e0ed5377]
+	chromedriver!(No symbol) [0x7ff7e0ed4250]
+	chromedriver!(No symbol) [0x7ff7e0ec6228]
+	chromedriver!(No symbol) [0x7ff7e0efba6a]
+	chromedriver!(No symbol) [0x7ff7e0ec5aa6]
+	chromedriver!(No symbol) [0x7ff7e0f2267a]
+	chromedriver!(No symbol) [0x7ff7e0ec4412]
+	chromedriver!(No symbol) [0x7ff7e0ec5223]
+	chromedriver!GetHandleVerifier [0x7ff7e153b1d1+414e21]
+	chromedriver!GetHandleVerifier [0x7ff7e15651fb+43ee4b]
+	chromedriver!GetHandleVerifier [0x7ff7e15596ce+43331e]
+	chromedriver!GetHandleVerifier [0x7ff7e123015e+109dae]
+	chromedriver!(No symbol) [0x7ff7e1060e85]
+	chromedriver!(No symbol) [0x7ff7e105be14]
+	chromedriver!(No symbol) [0x7ff7e105bfa4]
+	chromedriver!(No symbol) [0x7ff7e1046b0c]
+	KERNEL32!BaseThreadInitThunk [0x7ff8de16cd87+17]
+	ntdll!RtlUserThreadStart [0x7ff8df1ccaec+2c]
+Bash Retry clicking the label instead of the visually-hidden checkbox
+IN
+./.venv/Scripts/python.exe -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
+
+options = Options()
+options.add_argument('--headless=new')
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+driver = webdriver.Chrome(options=options)
+driver.set_window_size(1200, 500)
+
+driver.get('http://127.0.0.1:8000/login/')
+driver.find_element(By.NAME, 'username').send_keys('_tmp_preview_starfilter')
+driver.find_element(By.NAME, 'password').send_keys('previewpass123')
+driver.find_element(By.XPATH, \"//button[@type='submit']\").click()
+time.sleep(0.3)
+driver.execute_script('localStorage.setItem(\"theme\",\"dark\"); document.documentElement.setAttribute(\"data-theme\",\"dark\");')
+
+driver.get('http://127.0.0.1:8000/project/')
+time.sleep(0.3)
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/v_star_toggle_off.png')
+
+driver.find_element(By.CSS_SELECTOR, '.star-filter-toggle').click()
+time.sleep(0.2)
+driver.save_screenshot('C:/Users/mzida_yqzansz/Projects/academic/pbp/pbp-tutorial-0/v_star_toggle_on.png')
+driver.quit()
+print('done')
+"
+
+OUT
+done
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\v_star_toggle_off.png
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\v_star_toggle_on.png
+Bagus, terlihat rapi sebagai icon toggle. Sekarang bersihkan data percobaan dan jalankan test suite.
+
+
+Bash Clean up temp user, stop server, remove screenshots
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.contrib.auth.models import User
+User.objects.filter(username='_tmp_preview_starfilter').delete()
+print('cleaned up')
+"
+pkill -f "manage.py runserver" 2>/dev/null
+rm -f v_star_toggle_off.png v_star_toggle_on.png
+echo done
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+cleaned up
+done
+Bash Run StarTest including new starred-filter tests
+IN
+./.venv/Scripts/python.exe manage.py test main.tests.StarTest -v 2 2>&1 | tail -20
+
+OUT
+  Applying main.0001_initial... OK
+  Applying main.0002_project... OK
+  Applying main.0003_alter_project_category... OK
+  Applying main.0004_project_starred_by... OK
+  Applying main.0005_experience_starred_by... OK
+  Applying sessions.0001_initial...test_anonymous_cannot_toggle_project_star (main.tests.StarTest.test_anonymous_cannot_toggle_project_star) ... ok
+test_logged_in_user_can_star_and_unstar_experience (main.tests.StarTest.test_logged_in_user_can_star_and_unstar_experience) ... ok
+test_logged_in_user_can_star_and_unstar_project (main.tests.StarTest.test_logged_in_user_can_star_and_unstar_project) ... ok
+test_starred_filter_ignored_for_anonymous_user (main.tests.StarTest.test_starred_filter_ignored_for_anonymous_user) ... ok
+test_starred_filter_only_shows_experiences_i_starred (main.tests.StarTest.test_starred_filter_only_shows_experiences_i_starred) ... ok
+test_starred_filter_only_shows_projects_i_starred (main.tests.StarTest.test_starred_filter_only_shows_projects_i_starred) ... ok
+test_starring_project_twice_does_not_duplicate (main.tests.StarTest.test_starring_project_twice_does_not_duplicate) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.372s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+ OK
+System check identified no issues (0 silenced).
+Bash Run the complete test suite one final time
+IN
+./.venv/Scripts/python.exe manage.py test main 2>&1 | tail -10
+
+OUT
+[28/Sep/2026 21:53:10,789] - Broken pipe from ('127.0.0.1', 64439)
+[28/Sep/2026 21:53:10,789] - Broken pipe from ('127.0.0.1', 62142)
+
+----------------------------------------------------------------------
+Ran 64 tests in 36.714s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 64 test(s).
+System check identified no issues (0 silenced).
+Semua 64 test lulus. Ringkasan fitur filter "starred" yang baru:
+
+Backend (main/views.py) — get_projects_json/get_experience_json dan show_projects/show_experience terima ?starred=1, filter .filter(starred_by=request.user) — cuma aktif kalau user login (diabaikan otomatis buat anonymous, gak error).
+
+UI — toggle icon bintang (★) di form pencarian, gaya sama kayak tombol star di card (outline abu-abu → solid biru pas aktif), pakai :has(input:checked) biar gak butuh JS. Checkbox aslinya disembunyikan visual (clip) tapi tetap accessible lewat aria-label/title di <label>-nya — gak ada teks yang ke-render di DOM sesuai permintaan kamu. Cuma muncul buat user yang login.
+
+Test baru (3, di StarTest) — filter cuma nunjukin project/experience yang di-star user yang login, dan filter diabaikan buat anonymous.
