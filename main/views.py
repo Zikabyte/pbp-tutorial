@@ -48,6 +48,7 @@ def show_projects(request):
     sort_query = request.GET.get("sort", "name").strip()
     if sort_query not in PROJECT_SORT_OPTIONS:
         sort_query = "name"
+    starred_query = request.GET.get("starred") == "1" and request.user.is_authenticated
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
@@ -55,15 +56,16 @@ def show_projects(request):
         "title_query": title_query,
         "category_query": category_query,
         "sort_query": sort_query,
+        "starred_query": starred_query,
         "category_choices": Project.PROJECT_CATEGORIES_CHOICES,
     }
     return render(request, "project.html", context)
 
 @login_required(login_url="/login/")
 def create_project(request):
-    if not request.user.is_superuser:
+    if not request.user.has_perm("main.add_project"):
         raise PermissionDenied
-    
+
     form = ProjectForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
@@ -79,7 +81,7 @@ def create_project(request):
 
 @login_required(login_url="/login/")
 def update_project(request, project_id):
-    if not request.user.is_superuser:
+    if not request.user.has_perm("main.change_project"):
         raise PermissionDenied
 
     project = get_object_or_404(Project, pk=project_id)
@@ -103,6 +105,7 @@ def get_projects_json(request):
     sort_query = request.GET.get("sort", "name").strip()
     if sort_query not in PROJECT_SORT_OPTIONS:
         sort_query = "name"
+    starred_only = request.GET.get("starred") == "1" and request.user.is_authenticated
 
     projects = Project.objects.all()
 
@@ -112,16 +115,26 @@ def get_projects_json(request):
     if category_query:
         projects = projects.filter(category=category_query)
 
+    if starred_only:
+        projects = projects.filter(starred_by=request.user)
+
     projects = projects.order_by(sort_query)
 
-    projects_json = serializers.serialize("json", projects, use_natural_foreign_keys=True)
+    if request.user.is_superuser:
+        projects_json = serializers.serialize("json", projects, use_natural_foreign_keys=True)
+    else:
+        projects_json = serializers.serialize(
+            "json",
+            projects,
+            fields=["name", "description", "image_url", "category", "project_url"],
+        )
     return HttpResponse(projects_json, content_type="application/json")
 
 @login_required(login_url="/login/")
 def delete_project(request, project_id):
-    if not request.user.is_superuser:
+    if not request.user.has_perm("main.delete_project"):
         raise PermissionDenied
-    
+
     project = get_object_or_404(Project, pk=project_id)
 
     if request.method == "POST":
@@ -146,6 +159,7 @@ def show_experience(request):
     sort_query = request.GET.get("sort", "title").strip()
     if sort_query not in EXPERIENCE_SORT_OPTIONS:
         sort_query = "title"
+    starred_query = request.GET.get("starred") == "1" and request.user.is_authenticated
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
@@ -153,6 +167,7 @@ def show_experience(request):
         "title_query": title_query,
         "category_query": category_query,
         "sort_query": sort_query,
+        "starred_query": starred_query,
         "category_choices": Experience.EXPERIENCE_CHOICES,
     }
     return render(request, "experience.html", context)
@@ -163,6 +178,7 @@ def get_experience_json(request):
     sort_query = request.GET.get("sort", "title").strip()
     if sort_query not in EXPERIENCE_SORT_OPTIONS:
         sort_query = "title"
+    starred_only = request.GET.get("starred") == "1" and request.user.is_authenticated
 
     experiences = Experience.objects.all()
 
@@ -172,14 +188,24 @@ def get_experience_json(request):
     if category_query:
         experiences = experiences.filter(category=category_query)
 
+    if starred_only:
+        experiences = experiences.filter(starred_by=request.user)
+
     experiences = experiences.order_by(sort_query)
 
-    projects_json = serializers.serialize("json", experiences)
+    if request.user.is_superuser:
+        projects_json = serializers.serialize("json", experiences, use_natural_foreign_keys=True)
+    else:
+        projects_json = serializers.serialize(
+            "json",
+            experiences,
+            fields=["title", "description", "category", "thumbnail", "started_at", "ended_at"],
+        )
     return HttpResponse(projects_json, content_type="application/json")
 
 @login_required(login_url="/login/")
 def create_experience(request):
-    if not request.user.is_superuser:
+    if not request.user.has_perm("main.add_experience"):
         raise PermissionDenied
     
     form = ExperienceForm(request.POST or None)
@@ -197,7 +223,7 @@ def create_experience(request):
 
 @login_required(login_url="/login/")
 def update_experience(request, experience_id):
-    if not request.user.is_superuser:
+    if not request.user.has_perm("main.change_experience"):
         raise PermissionDenied
 
     experience = get_object_or_404(Experience, pk=experience_id)
@@ -217,7 +243,7 @@ def update_experience(request, experience_id):
 
 @login_required(login_url="/login/")
 def delete_experience(request, experience_id):
-    if not request.user.is_superuser:
+    if not request.user.has_perm("main.delete_experience"):
         raise PermissionDenied
 
     experience = get_object_or_404(Experience, pk=experience_id)
@@ -255,7 +281,7 @@ def login_user(request):
         return response
 
     context = {
-        "name": "Burhan",
+        "name": "Mohammad Zidane Kurnianto",
         "form": form,
     }
     return render(request, "login.html", context)
@@ -268,7 +294,7 @@ def logout_user(request):
 
 # ----------------------------------- Misc ----------------------------------- #
 @login_required(login_url="/login/")
-def toggle_star(request, project_id):
+def toggle_project_star(request, project_id):
     project = get_object_or_404(Project, pk=project_id)
 
     if request.method == "POST":
@@ -280,3 +306,17 @@ def toggle_star(request, project_id):
             project.starred_by.add(request.user)
 
     return redirect("main:show_projects")
+
+@login_required(login_url="/login/")
+def toggle_experience_star(request, experience_id):
+    experience = get_object_or_404(Experience, pk=experience_id)
+
+    if request.method == "POST":
+        # Kalau akun ini sudah pernah memberi star, batalkan star-nya.
+        # Kalau belum, tambahkan star.
+        if request.user in experience.starred_by.all():
+            experience.starred_by.remove(request.user)
+        else:
+            experience.starred_by.add(request.user)
+
+    return redirect("main:show_experience")

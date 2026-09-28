@@ -15,13 +15,16 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed         # seed database with Experience & Project data
+
+# seed database with Experiences, Projects, and the Editor Group
+python manage.py seed
+
 python manage.py runserver
 ```
 
 ### Seed data
 
-`python manage.py seed` populates the database with `Experience` and `Project` data used in this portfolio (FisioMate, GARDA NLP, Zikapedia, Samudera, etc.). The data itself is located in `main/management/commands/seed.py`, so simply edit it if you want to change it
+`python manage.py seed` populates the database with `Experience` and `Project` data used in this portfolio (FisioMate, GARDA NLP, Zikapedia, Samudera, etc.). Additionally, the seeder also adds the `Editor` user group. The data itself is located in `main/management/commands/seed.py`, so simply edit it if you want to change it
 
 ## Dependencies
 
@@ -125,6 +128,44 @@ AI digunakan terutama untuk tugas repetitif (seperti writing tests), implementas
 1. Write unit test untuk views CRUD experience & project dan fungsionalitas sorting dan filtering
 2. Implementasi fitur filtering dan sorting di experience & project list pages
 3. Debugging
+
+##### Strategi Prompting
+
+- Menjalankan Claude Code dalam manual approval mode (bukan auto-accept), sehingga setiap perubahan/edit yang diajukan AI harus ditinjau dan disetujui secara eksplisit satu per satu.
+- Semua kode hasil AI ditinjau dan diuji secara manual sebelum di-commit.
+- Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).
+
+### Tugas 4
+
+> Uh, walaupun tidak disuruh, saya akan tetap menjelaskan progres yang saya capai pada tugas ini o(_￣▽￣_)ブ
+
+Sesuai dengan spesifikasi yang diminta oleh Tugas 4 dan Tutorial 4, telah diimplementasikan empat tipe user dengan hak akses berbeda:
+
+- **Visitor (pengunjung situs yang belum login)**, dapat membaca semua data, tetapi ketika memanggil endpoint untuk star, create, edit, dan delete, situs akan redirect ke halaman login
+- **Regular user**, bisa membaca semua data dan star, tetapi tidak bisa create, edit, dan delete tanpa peran khusus (mendapat HTTP 403 jika tetap mencobanya)
+- **Editor**, peran baru yang diimplementasikan melalui Django Group & Permission (dibuat dan di-assign melalui Django Admin). Editor punya semua permission regular user, tetapi tidak bisa membuat atau menghapus (dapat di-create dengan command `python manage.py seed`)
+- **Superuser**, yang memiliki permission penuh
+
+Untuk mendukungnya, setiap view yang sensitif dilindingi oleh dekorator `@login_required` dan juga pengecek `request.user.has_perm(...)`.
+
+Selain itu, pada template, sudah dilakukan hiding action buttons sesuai dengan permission user. Fitur star juga sekarang sudah diimplementasikan pada fitur experience. Last but not least, endpoint JSON tidak lagi spill data sensitif (seperti nama user yang star sesuatu project) kepada publik, tetapi jika request berasal dari superuser, data tersebut dapat ditampilkan.
+
+#### AI Disclosure: Tugas 4
+
+Seperti tugas sebelumnya, AI digunakan terutama untuk tugas repetitif (seperti writing tests), clean-up styling (seperti adjusting component yang straight from tutorial untuk beradaptasi dengan dark mode) implementasi fitur diluar yang diminta oleh Individual Assignment 3 (seperti star-based filtering dan hamburger bar), dan debugging.
+
+##### Tools yang Digunakan
+
+- Claude Code: digunakan untuk membantu implementasi fitur, styling, debugging, dan write unit tests.
+
+> Catatan: Log penggunaan Claude Code disediakan di folder `logs/`
+
+##### Bagian Spesifik yang Dibantu AI
+
+1. Write unit test untuk fungsionalitas auth, API safety, dan stars.
+2. Implementasi fitur star-based filtering di project dan experience list page dan hamburger navbar
+3. Implementasi seeder untuk create group `Editor`
+4. Debugging
 
 ##### Strategi Prompting
 

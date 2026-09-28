@@ -1,6 +1,10 @@
+from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 
 from main.models import Experience, Project
+
+EDITOR_GROUP_NAME = "Editor"
+EDITOR_PERMISSION_CODENAMES = ["change_project", "change_experience"]
 
 EXPERIENCES = [
     {
@@ -73,7 +77,7 @@ PROJECTS = [
 
 
 class Command(BaseCommand):
-    help = "Mengisi database dengan data Experience dan Project contoh."
+    help = "Mengisi database dengan data Experience, Project, dan grup Editor contoh."
 
     def handle(self, *args, **options):
         for data in EXPERIENCES:
@@ -90,4 +94,21 @@ class Command(BaseCommand):
                 f"Project '{name}' {'created!' if created else 'already exists.'}"
             )
 
+        self.seed_editor_group()
+
         self.stdout.write(self.style.SUCCESS("Seeding complete."))
+
+    def seed_editor_group(self):
+        group, created = Group.objects.get_or_create(name=EDITOR_GROUP_NAME)
+
+        permissions = Permission.objects.filter(
+            content_type__app_label="main",
+            codename__in=EDITOR_PERMISSION_CODENAMES,
+        )
+        group.permissions.set(permissions)
+
+        codenames = ", ".join(sorted(p.codename for p in permissions))
+        self.stdout.write(
+            f"Group '{EDITOR_GROUP_NAME}' {'created!' if created else 'already exists.'} "
+            f"(permissions: {codenames})"
+        )

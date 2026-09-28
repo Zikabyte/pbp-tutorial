@@ -27,6 +27,12 @@
 				<option value="category" {% if sort_query == "category" %}selected{% endif %}>Kategori (A-Z)</option>
 				<option value="-category" {% if sort_query == "-category" %}selected{% endif %}>Kategori (Z-A)</option>
 			</select>
+			{% if user.is_authenticated %}
+			<label class="star-filter-toggle" title="Hanya yang saya star" aria-label="Hanya yang saya star">
+				<input type="checkbox" name="starred" value="1" {% if starred_query %}checked{% endif %}>
+				<span aria-hidden="true">★</span>
+			</label>
+			{% endif %}
 			<button type="submit" class="button">Cari</button>
 		</form>
 
@@ -46,12 +52,18 @@
 				{% endif %}
 
 				<div class="project-actions">
+					{% include "components/experience_star.html" with experience=experience %}
+
+					{% if perms.main.change_experience %}
 					<a href="{% url 'main:update_experience' experience.id %}" class="button button-secondary">Edit</a>
+					{% endif %}
+					{% if perms.main.delete_experience %}
 					{% include "components/experience_delete_modal.html" with experience=experience %}
+					{% endif %}
 				</div>
 			</article>
 			{% empty %}
-				{% if title_query or category_query %}
+				{% if title_query or category_query or starred_query %}
 					<p class="empty-state">Tidak ada pengalaman yang cocok dengan pencarian.</p>
 				{% else %}
 					<p class="empty-state">Belum ada pengalaman yang ditambahkan.</p>
