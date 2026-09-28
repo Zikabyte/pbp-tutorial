@@ -133,3 +133,16 @@ AI digunakan terutama untuk tugas repetitif (seperti writing tests), implementas
 - Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).
 
 ### Tugas 4
+
+> Uh, walaupun tidak disuruh, saya akan tetap menjelaskan progres yang saya capai pada tugas ini o(_￣▽￣_)ブ
+
+Sesuai dengan spesifikasi yang diminta oleh Tugas 4 dan Tutorial 4, telah diimplementasikan empat tipe user dengan hak akses berbeda:
+
+- **Visitor (pengunjung situs yang belum login)**, dapat membaca semua data, tetapi ketika memanggil endpoint untuk star, create, edit, dan delete, situs akan redirect ke halaman login
+- **Regular user**, bisa membaca semua data dan star, tetapi tidak bisa create, edit, dan delete tanpa peran khusus (mendapat HTTP 403 jika tetap mencobanya)
+- **Editor**, peran baru yang diimplementasikan melalui Django Group & Permission (dibuat dan di-assign melalui Django Admin). Editor punya semua permission regular user, tetapi tidak bisa membuat atau menghapus
+- **Superuser**, yang memiliki permission penuh
+
+Untuk mendukungnya, setiap view yang sensitif dilindingi oleh dekorator `@login_required` dan juga pengecek `request.user.has_perm(...)`.
+
+Selain itu, pada template, sudah dilakukan hiding action buttons sesuai dengan permission user. Fitur star juga sekarang sudah diimplementasikan pada fitur experience. Last but not least, endpoint JSON tidak lagi spill data sensitif (seperti nama user yang star sesuatu project) kepada publik, tetapi jika request berasal dari superuser, data tersebut dapat ditampilkan.
