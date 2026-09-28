@@ -114,7 +114,14 @@ def get_projects_json(request):
 
     projects = projects.order_by(sort_query)
 
-    projects_json = serializers.serialize("json", projects, use_natural_foreign_keys=True)
+    if request.user.is_superuser:
+        projects_json = serializers.serialize("json", projects, use_natural_foreign_keys=True)
+    else:
+        projects_json = serializers.serialize(
+            "json",
+            projects,
+            fields=["name", "description", "image_url", "category", "project_url"],
+        )
     return HttpResponse(projects_json, content_type="application/json")
 
 @login_required(login_url="/login/")
@@ -174,7 +181,14 @@ def get_experience_json(request):
 
     experiences = experiences.order_by(sort_query)
 
-    projects_json = serializers.serialize("json", experiences, use_natural_foreign_keys=True)
+    if request.user.is_superuser:
+        projects_json = serializers.serialize("json", experiences, use_natural_foreign_keys=True)
+    else:
+        projects_json = serializers.serialize(
+            "json",
+            experiences,
+            fields=["title", "description", "category", "thumbnail", "started_at", "ended_at"],
+        )
     return HttpResponse(projects_json, content_type="application/json")
 
 @login_required(login_url="/login/")
