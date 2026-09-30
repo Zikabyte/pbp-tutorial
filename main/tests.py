@@ -203,20 +203,25 @@ class MainTest(TestCase):
 
     # ------------------------------ Project Testing ----------------------------- #
     def test_project_page(self):
+        # Project list-nya sekarang dirender via AJAX (project.js), bukan
+        # server-side, jadi kita cek "shell" halamannya (form pencarian +
+        # container grid) alih-alih konten project itu sendiri.
         response = self.client.get(reverse("main:show_projects"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "project.html")
-        self.assertContains(response, self.project.name)
-        self.assertContains(response, self.project.description)
-        self.assertContains(response, "href=\"https://pbp.cs.ui.ac.id\"")
+        self.assertContains(response, 'id="project-search-form"')
+        self.assertContains(response, 'id="grid"')
         self.assertContains(response, f'href="{reverse("main:show_main")}"')
 
-    def test_empty_project_page(self):
+    def test_empty_project_page_json_returns_empty_list(self):
+        # Konten "Belum ada proyek..." sekarang murni ditampilkan lewat JS
+        # begitu get_projects_json balikin array kosong.
         Project.objects.all().delete()
-        response = self.client.get(reverse("main:show_projects"))
+        response = self.client.get(reverse("main:get_projects_json"))
 
-        self.assertContains(response, "Belum ada proyek yang ditambahkan.")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content), [])
 
     def test_project_model(self):
             self.assertEqual(str(self.project), "Zikapedia")
@@ -618,10 +623,11 @@ class StarTest(TestCase):
         self.project.starred_by.add(self.user)
         self.client.login(username="starrer", password="pass12345")
 
-        response = self.client.get(reverse("main:show_projects"), {"starred": "1"})
+        response = self.client.get(reverse("main:get_projects_json"), {"starred": "1"})
+        names = [entry["fields"]["name"] for entry in json.loads(response.content)]
 
-        self.assertContains(response, self.project.name)
-        self.assertNotContains(response, other_project.name)
+        self.assertIn(self.project.name, names)
+        self.assertNotIn(other_project.name, names)
 
     def test_starred_filter_only_shows_experiences_i_starred(self):
         other_experience = Experience.objects.create(
@@ -645,10 +651,11 @@ class StarTest(TestCase):
             category="general",
         )
 
-        response = self.client.get(reverse("main:show_projects"), {"starred": "1"})
+        response = self.client.get(reverse("main:get_projects_json"), {"starred": "1"})
+        names = [entry["fields"]["name"] for entry in json.loads(response.content)]
 
-        self.assertContains(response, self.project.name)
-        self.assertContains(response, other_project.name)
+        self.assertIn(self.project.name, names)
+        self.assertIn(other_project.name, names)
 
 
 # --------------------------- API Data Safety and Integrity -------------------------- #
@@ -670,7 +677,10 @@ class ApiSecurityTest(TestCase):
         data = json.loads(response.content)
         match = next(entry for entry in data if entry["pk"] == str(self.project.id))
 
-        self.assertNotIn("starred_by", match["fields"])
+        # Agregat (jumlah star) tetap boleh dilihat siapa saja...
+        self.assertEqual(match["fields"]["star_count"], 1)
+        # ...tapi identitas siapa yang nge-star cuma buat superuser.
+        self.assertNotIn("starred_by_names", match["fields"])
 
     def test_superuser_sees_starred_by_in_json(self):
         self.client.login(username="owner2", password="pass12345")
@@ -679,8 +689,8 @@ class ApiSecurityTest(TestCase):
         data = json.loads(response.content)
         match = next(entry for entry in data if entry["pk"] == str(self.project.id))
 
-        self.assertIn("starred_by", match["fields"])
-        self.assertEqual(match["fields"]["starred_by"], [["starrer2"]])
+        self.assertIn("starred_by_names", match["fields"])
+        self.assertEqual(match["fields"]["starred_by_names"], "starrer2")
 
 
 # ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Zikafolio - Project{% endblock %}
 {% block content %}
 <section class="projects" id="projects">
@@ -7,30 +8,33 @@
 		<div class="project-header">
 			<h1>Projects</h1>
 			{% if perms.main.add_project %}
-			<a href="{% url 'main:create_project' %}"
-				class="button project-add-button">
+			<button type="button"
+					class="button project-add-button"
+					popovertarget="add-project-modal">
 				<span aria-hidden="true">+</span>
 				Tambah Proyek
-			</a>
+			</button>
 			{% endif %} 
 		</div>
 
 	<form method="get"
 			action="{% url 'main:show_projects' %}"
+			id="project-search-form"
 			class="project-search">
 		<input type="search"
 			name="title"
+			id="search-input"
 			value="{{ title_query }}"
 			placeholder="Cari berdasarkan nama proyek"
 			class="project-search__input"
 			aria-label="Cari berdasarkan nama proyek">
-		<select name="category" class="project-search__select" aria-label="Filter kategori">
+		<select name="category" id="category-select" class="project-search__select" aria-label="Filter kategori">
 			<option value="">Semua Kategori</option>
 			{% for value, label in category_choices %}
 			<option value="{{ value }}" {% if category_query == value %}selected{% endif %}>{{ label }}</option>
 			{% endfor %}
 		</select>
-		<select name="sort" class="project-search__select" aria-label="Urutkan">
+		<select name="sort" id="sort-select" class="project-search__select" aria-label="Urutkan">
 			<option value="name" {% if sort_query == "name" %}selected{% endif %}>Nama (A-Z)</option>
 			<option value="-name" {% if sort_query == "-name" %}selected{% endif %}>Nama (Z-A)</option>
 			<option value="category" {% if sort_query == "category" %}selected{% endif %}>Kategori (A-Z)</option>
@@ -38,52 +42,46 @@
 		</select>
 		{% if user.is_authenticated %}
 		<label class="star-filter-toggle" title="Hanya yang saya star" aria-label="Hanya yang saya star">
-			<input type="checkbox" name="starred" value="1" {% if starred_query %}checked{% endif %}>
+			<input type="checkbox" name="starred" id="starred-filter" value="1" {% if starred_query %}checked{% endif %}>
 			<span aria-hidden="true">★</span>
 		</label>
 		{% endif %}
 		<button type="submit" class="button">Cari</button>
 	</form>
 
-	<div id="project-grid">
-		{% for project in project_list %}
-		<article class="project-item">
-			<h3>{{ project.name }}</h3>
-			{% if project.image_url %}
-				<img
-				src="{{project.image_url}}"
-				alt="mockup of {{project.name}}"
-				class="project-image"
-				width="300"
-				/>
-			{% endif %}
-			<p>{{ project.description }}</p>
-			<div class="project-button">
-				{% if project.project_url %}
-					<a href="{{ project.project_url }}">
-						<span>Check It Out!</span>
-					</a>
-				{% endif %}
-				<div class="project-actions">
-					{% include "components/project_star.html" with project=project %}
-					
-					{% if perms.main.change_project %}
-					<a href="{% url 'main:update_project' project.id %}" class="button button-secondary">Edit</a>
-					{% endif %}
-
-					{% if perms.main.delete_project %}
-					{% include "components/project_delete_modal.html" with project=project %}
-					{% endif %}
-				</div>
-			</div>
-		</article>
-		{% empty %}
-			{% if title_query or category_query or starred_query %}
-				<p class="empty-state">Tidak ada proyek yang cocok dengan pencarian.</p>
-			{% else %}
-				<p class="empty-state">Belum ada proyek yang ditambahkan.</p>
-			{% endif %}
-		{% endfor %}
+	<!-- Loading State -->
+	<div id="loading" class="empty-state hide">
+		<p>Memuat projects...</p>
 	</div>
+
+	<!-- Error State -->
+	<div id="error" class="empty-state hide">
+		<p>Gagal memuat data projects. Silakan coba lagi.</p>
+	</div>
+
+	<!-- Empty State -->
+	<div id="empty" class="empty-state hide">
+		<p>Belum ada proyek yang ditambahkan atau ditemukan.</p>
+	</div>
+
+	<!-- Project Grid -->
+	<div id="grid" class="experience-grid project-grid hide"></div>
+
+	{% csrf_token %}
 </section>
+
+{% if user.is_superuser %}
+    {% include "components/project_form_modal.html" %}
+{% endif %}
+
+<script>
+	const PROJECT_CONFIG = {
+		projectsEndpoint: "{% url 'main:get_projects_json' %}",
+		createEndpoint: "{% url 'main:create_project_ajax' %}",
+		deleteUrlTemplate: "{% url 'main:delete_project' '00000000-0000-0000-0000-000000000000' %}",
+		starUrlTemplate: "{% url 'main:toggle_project_star' '00000000-0000-0000-0000-000000000000' %}",
+		isSuperuser: {{ user.is_superuser|yesno:"true,false" }},
+	};
+</script>
+<script src="{% static 'js/project.js' %}"></script>
 {% endblock %}

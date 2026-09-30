@@ -2,9 +2,10 @@ from django.contrib import messages
 from django.core import serializers
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required 
+from django.views.decorators.http import require_POST 
 from django.core.exceptions import PermissionDenied 
 
 from main.forms import ExperienceForm, ProjectForm
@@ -36,13 +37,6 @@ EXPERIENCE_SORT_OPTIONS = {"title", "-title", "category", "-category"}
 
 
 def show_projects(request):
-    json_response = get_projects_json(request)
-
-    projects = serializers.deserialize(
-        "json",
-        json_response.content.decode("utf-8"),
-    )
-    projects = [project.object for project in projects]
     title_query = request.GET.get("title", "").strip()
     category_query = request.GET.get("category", "").strip()
     sort_query = request.GET.get("sort", "name").strip()
@@ -52,12 +46,12 @@ def show_projects(request):
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
-        "project_list": projects,
         "title_query": title_query,
         "category_query": category_query,
         "sort_query": sort_query,
         "starred_query": starred_query,
         "category_choices": Project.PROJECT_CATEGORIES_CHOICES,
+        "form": ProjectForm(),
     }
     return render(request, "project.html", context)
 
@@ -78,6 +72,24 @@ def create_project(request):
         "form": form,
     }
     return render(request, "projects_form.html", context)
+
+@require_POST
+def create_project_ajax(request):
+    if not request.user.is_superuser:
+        return JsonResponse(
+            {"message": "Hanya pemilik portofolio yang dapat menambahkan proyek."},
+            status=403,
+        )
+
+    form = ProjectForm(request.POST)
+    if form.is_valid():
+        project = form.save()
+        return JsonResponse(
+            {"message": "Proyek berhasil ditambahkan.", "pk": str(project.id)},
+            status=201,
+        )
+
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
 @login_required(login_url="/login/")
 def update_project(request, project_id):
@@ -120,15 +132,45 @@ def get_projects_json(request):
 
     projects = projects.order_by(sort_query)
 
+    data = []
+
     if request.user.is_superuser:
-        projects_json = serializers.serialize("json", projects, use_natural_foreign_keys=True)
+        for project in projects:
+            starred_users = project.starred_by.all()
+            is_starred = request.user in starred_users if request.user.is_authenticated else False
+            starred_by_names = ", ".join([u.username for u in starred_users])
+
+            data.append({
+                "pk": str(project.id),
+                "fields": {
+                    "name": project.name,
+                    "description": project.description,
+                    "category": project.category,
+                    "project_url": project.project_url,
+                    "image_url": project.image_url,
+                    "star_count": starred_users.count(),
+                    "is_starred": is_starred,
+                    "starred_by_names": starred_by_names,
+                }
+            })
     else:
-        projects_json = serializers.serialize(
-            "json",
-            projects,
-            fields=["name", "description", "image_url", "category", "project_url"],
-        )
-    return HttpResponse(projects_json, content_type="application/json")
+        for project in projects:
+            starred_users = project.starred_by.all()
+            is_starred = request.user in starred_users if request.user.is_authenticated else False
+
+            data.append({
+                "pk": str(project.id),
+                "fields": {
+                    "name": project.name,
+                    "description": project.description,
+                    "category": project.category,
+                    "project_url": project.project_url,
+                    "image_url": project.image_url,
+                    "star_count": starred_users.count(),
+                    "is_starred": is_starred,
+                }
+            })
+    return JsonResponse(data, safe=False)
 
 @login_required(login_url="/login/")
 def delete_project(request, project_id):

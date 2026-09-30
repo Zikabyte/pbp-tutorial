@@ -1,3 +1,6 @@
+@import url("_toast.css");
+@import url("_project-form.css");
+
 * {
 	margin: 0;
 	padding: 0;
@@ -47,6 +50,10 @@ h1,
 
 h1:hover {
 	transform: scale(1.01);
+}
+
+.hide {
+	display: none !important;
 }
 
 .container {
@@ -124,7 +131,9 @@ h1:hover {
 	height: 2px;
 	background: var(--ink);
 	border-radius: 2px;
-	transition: transform 0.2s ease, opacity 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		opacity 0.2s ease;
 }
 
 .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(1) {
@@ -702,7 +711,9 @@ header {
 	background: var(--card-bg);
 	color: var(--ink);
 	font: inherit;
-	transition: border-color 0.2s ease, background-color 0.2s ease;
+	transition:
+		border-color 0.2s ease,
+		background-color 0.2s ease;
 }
 
 .project-search__select {
@@ -714,7 +725,9 @@ header {
 	background: var(--card-bg);
 	color: var(--ink);
 	font: inherit;
-	transition: border-color 0.2s ease, background-color 0.2s ease;
+	transition:
+		border-color 0.2s ease,
+		background-color 0.2s ease;
 }
 
 .project-search__input:focus,
