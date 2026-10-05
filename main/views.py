@@ -188,7 +188,6 @@ def delete_project(request, project_id):
 # -------------------------------- Experience -------------------------------- #
 
 def show_experience(request):
-    experiences = _filtered_experiences(request)
     title_query = request.GET.get("title", "").strip()
     category_query = request.GET.get("category", "").strip()
     sort_query = request.GET.get("sort", "title").strip()
@@ -198,7 +197,6 @@ def show_experience(request):
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
-        "experience_list": experiences,
         "title_query": title_query,
         "category_query": category_query,
         "sort_query": sort_query,
@@ -241,6 +239,7 @@ def get_experience_json(request):
             "title": experience.title,
             "description": experience.description,
             "category": experience.category,
+            "category_display": experience.get_category_display(),
             "thumbnail": experience.thumbnail,
             "started_at": experience.started_at,
             "ended_at": experience.ended_at,

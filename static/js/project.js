@@ -131,7 +131,9 @@ async function fetchProjects() {
 		if (starredFilter && starredFilter.checked) params.set("starred", "1");
 
 		const queryString = params.toString();
-		const url = queryString ? `${BASE_PROJECTS_ENDPOINT}?${queryString}` : BASE_PROJECTS_ENDPOINT;
+		const url = queryString
+			? `${BASE_PROJECTS_ENDPOINT}?${queryString}`
+			: BASE_PROJECTS_ENDPOINT;
 
 		const response = await fetch(url, {
 			headers: { Accept: "application/json" },
