@@ -1,5 +1,6 @@
 .project-form-modal {
 	display: none;
+	color: var(--ink);
 	position: fixed;
 	inset: 0;
 	width: 100%;
@@ -32,6 +33,7 @@
 
 .project-form-modal__content {
 	position: relative;
+	color: var(--ink);
 	z-index: 1;
 	width: min(100%, 640px);
 	max-height: calc(100vh - 2rem);
