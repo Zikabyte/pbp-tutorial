@@ -2,6 +2,7 @@
 const BASE_EXPERIENCES_ENDPOINT = EXPERIENCE_CONFIG.experiencesEndpoint;
 const CAN_CHANGE = EXPERIENCE_CONFIG.canChange;
 const CAN_DELETE = EXPERIENCE_CONFIG.canDelete;
+const CREATE_EXPERIENCE_ENDPOINT = EXPERIENCE_CONFIG.createEndpoint;
 let experiencesAbortController;
 
 // Elemen DOM
@@ -171,6 +172,55 @@ async function fetchExperiences() {
 		console.error("Error loading experiences:", error);
 		displayPageSection({ showError: true });
 	}
+}
+
+function closeExperienceModal() {
+	document.getElementById("add-experience-modal").hidePopover();
+}
+
+// Mengirim data form tambah experience ke server
+async function addExperience(event) {
+	event.preventDefault();
+
+	const submitButton = experienceForm.querySelector('button[type="submit"]');
+	submitButton.disabled = true;
+
+	try {
+		const response = await fetch(CREATE_EXPERIENCE_ENDPOINT, {
+			method: "POST",
+			headers: { "X-CSRFToken": getCookie("csrftoken") },
+			body: new FormData(experienceForm),
+		});
+		const result = await response.json().catch(() => ({}));
+
+		if (response.ok) {
+			experienceForm.reset();
+			closeExperienceModal();
+			showToast("Berhasil", "Pengalaman baru berhasil ditambahkan!", "success");
+			fetchExperiences();
+		} else {
+			const errorMessages = result.errors
+				? Object.values(result.errors)
+						.flat()
+						.map((error) => error.message)
+				: [result.message || `Terjadi kesalahan (status ${response.status}).`];
+			showToast("Gagal menambahkan pengalaman", errorMessages.join(" "), "error");
+		}
+	} catch (error) {
+		console.error("Error adding experience:", error);
+		showToast(
+			"Gagal menambahkan pengalaman",
+			"Tidak dapat terhubung ke server. Silakan coba lagi.",
+			"error",
+		);
+	} finally {
+		submitButton.disabled = false;
+	}
+}
+
+const experienceForm = document.getElementById("experience-form");
+if (experienceForm) {
+	experienceForm.addEventListener("submit", addExperience);
 }
 
 // Event Handlers untuk Form Search & Filter

@@ -5,7 +5,17 @@
 <section class="experience-section" id="experience">
 	<div class="container">
 		<p class="section-kicker">Perjalanan saya sejauh ini</p>
-		<h1>Experience</h1>
+		<div class="project-header">
+			<h1>Experience</h1>
+			{% if perms.main.add_experience %}
+			<button type="button"
+					class="button project-add-button"
+					popovertarget="add-experience-modal">
+				<span aria-hidden="true">+</span>
+				Tambah Pengalaman
+			</button>
+			{% endif %}
+		</div>
 
 		<form method="get"
 				action="{% url 'main:show_experience' %}"
@@ -61,9 +71,14 @@
 	</div>
 </section>
 
+{% if perms.main.add_experience %}
+    {% include "components/experience_form_modal.html" %}
+{% endif %}
+
 <script>
 	const EXPERIENCE_CONFIG = {
 		experiencesEndpoint: "{% url 'main:get_experience_json' %}",
+		createEndpoint: "{% url 'main:create_experience_ajax' %}",
 		updateUrlTemplate: "{% url 'main:update_experience' '00000000-0000-0000-0000-000000000000' %}",
 		deleteUrlTemplate: "{% url 'main:delete_experience' '00000000-0000-0000-0000-000000000000' %}",
 		starUrlTemplate: "{% url 'main:toggle_experience_star' '00000000-0000-0000-0000-000000000000' %}",

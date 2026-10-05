@@ -74,7 +74,7 @@ def create_project(request):
 
 @require_POST
 def create_project_ajax(request):
-    if not request.user.is_superuser:
+    if not request.user.has_perm("main.add_project"):
         return JsonResponse(
             {"message": "Hanya pemilik portofolio yang dapat menambahkan proyek."},
             status=403,
@@ -202,6 +202,7 @@ def show_experience(request):
         "sort_query": sort_query,
         "starred_query": starred_query,
         "category_choices": Experience.EXPERIENCE_CHOICES,
+        "form": ExperienceForm(),
     }
     return render(request, "experience.html", context)
 
@@ -273,9 +274,9 @@ def create_experience(request):
 
 @require_POST
 def create_experience_ajax(request):
-    if not request.user.is_superuser:
+    if not request.user.has_perm("main.add_experience"):
         return JsonResponse(
-            {"message": "Hanya pemilik portofolio yang dapat menambahkan proyek."},
+            {"message": "Hanya pemilik portofolio yang dapat menambahkan experience."},
             status=403,
         )
 
