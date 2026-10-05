@@ -54,30 +54,40 @@ class MainTest(TestCase):
         self.assertTrue(self.experience.is_ongoing)
 
     def test_experience_page(self):
+        # Daftar experience dirender via AJAX (experience.js), jadi cek kerangka
+        # halamannya saja; isi datanya diuji lewat get_experience_json.
         response = self.client.get(reverse("main:show_experience"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "experience.html")
-        self.assertContains(response, self.experience.title)
-        self.assertContains(response, self.experience.description)
-        self.assertContains(response, "Part-Time")
-        self.assertContains(response, "Sedang berlangsung")
+        self.assertContains(response, 'id="experience-search-form"')
+        self.assertContains(response, 'id="grid"')
         self.assertContains(response, f'href="{reverse("main:show_main")}"')
 
-    def test_empty_experience_page(self):
+    def test_experience_json_contains_expected_fields(self):
+        response = self.client.get(reverse("main:get_experience_json"))
+        entry = json.loads(response.content)[0]
+
+        self.assertEqual(entry["fields"]["title"], self.experience.title)
+        self.assertEqual(entry["fields"]["description"], self.experience.description)
+        self.assertEqual(entry["fields"]["category_display"], "Part-Time")
+        self.assertIsNone(entry["fields"]["ended_at"])
+
+    def test_empty_experience_page_json_returns_empty_list(self):
         Experience.objects.all().delete()
-        response = self.client.get(reverse("main:show_experience"))
+        response = self.client.get(reverse("main:get_experience_json"))
 
-        self.assertContains(response, "Belum ada pengalaman yang ditambahkan.")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content), [])
 
-    def test_completed_experience(self):
+    def test_completed_experience_json_has_ended_at(self):
         self.experience.ended_at = timezone.now()
         self.experience.save()
-        response = self.client.get(reverse("main:show_experience"))
+        response = self.client.get(reverse("main:get_experience_json"))
+        entry = json.loads(response.content)[0]
 
         self.assertFalse(self.experience.is_ongoing)
-        self.assertContains(response, "Selesai")
-        self.assertNotContains(response, "Sedang berlangsung")
+        self.assertIsNotNone(entry["fields"]["ended_at"])
 
     # --------------------------- Experience CRUD Testing -------------------------- #
     def test_create_experience_view_get(self):
@@ -638,10 +648,11 @@ class StarTest(TestCase):
         self.experience.starred_by.add(self.user)
         self.client.login(username="starrer", password="pass12345")
 
-        response = self.client.get(reverse("main:show_experience"), {"starred": "1"})
+        response = self.client.get(reverse("main:get_experience_json"), {"starred": "1"})
+        titles = [entry["fields"]["title"] for entry in json.loads(response.content)]
 
-        self.assertContains(response, self.experience.title)
-        self.assertNotContains(response, other_experience.title)
+        self.assertIn(self.experience.title, titles)
+        self.assertNotIn(other_experience.title, titles)
 
     def test_starred_filter_ignored_for_anonymous_user(self):
         self.project.starred_by.add(self.user)
@@ -691,6 +702,175 @@ class ApiSecurityTest(TestCase):
 
         self.assertIn("starred_by_names", match["fields"])
         self.assertEqual(match["fields"]["starred_by_names"], "starrer2")
+
+
+# ------------------------------ AJAX & Data Contract ----------------------------- #
+class CreateProjectAjaxTest(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_superuser(
+            username="ajax_owner", password="pass12345", email="ajax@example.com"
+        )
+        self.regular = User.objects.create_user(username="ajax_regular", password="pass12345")
+        self.url = reverse("main:create_project_ajax")
+        self.valid_data = {
+            "name": "Proyek AJAX",
+            "description": "Dibuat lewat AJAX.",
+            "image_url": "https://example.com/image.png",
+            "category": "general",
+            "project_url": "https://example.com/project",
+        }
+
+    def test_owner_can_create_project_via_ajax(self):
+        self.client.login(username="ajax_owner", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Project.objects.filter(name="Proyek AJAX").exists())
+        self.assertIn("pk", json.loads(response.content))
+
+    def test_invalid_ajax_post_returns_400_with_errors(self):
+        self.client.login(username="ajax_owner", password="pass12345")
+
+        response = self.client.post(self.url, data={**self.valid_data, "name": ""})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", json.loads(response.content)["errors"])
+        self.assertFalse(Project.objects.filter(description="Dibuat lewat AJAX.").exists())
+
+    def test_regular_user_cannot_create_project_via_ajax(self):
+        self.client.login(username="ajax_regular", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Project.objects.filter(name="Proyek AJAX").exists())
+
+    def test_anonymous_cannot_create_project_via_ajax(self):
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Project.objects.filter(name="Proyek AJAX").exists())
+
+    def test_get_on_ajax_create_endpoint_is_not_allowed(self):
+        self.client.login(username="ajax_owner", password="pass12345")
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 405)
+
+
+class ProjectJsonContractTest(TestCase):
+    def setUp(self):
+        self.project = Project.objects.create(
+            name="Kontrak JSON",
+            description="Deskripsi.",
+            category="web-development",
+        )
+        self.starrer = User.objects.create_user(username="kontrak_starrer", password="pass12345")
+        self.project.starred_by.add(self.starrer)
+
+    def _entry(self, response):
+        data = json.loads(response.content)
+        return next(entry for entry in data if entry["pk"] == str(self.project.id))
+
+    def test_json_includes_ui_fields_for_anonymous(self):
+        fields = self._entry(self.client.get(reverse("main:get_projects_json")))["fields"]
+
+        self.assertEqual(fields["name"], "Kontrak JSON")
+        self.assertEqual(fields["star_count"], 1)
+        self.assertFalse(fields["is_starred"])
+        self.assertNotIn("starred_by_names", fields)
+
+    def test_is_starred_true_for_user_who_starred(self):
+        self.client.login(username="kontrak_starrer", password="pass12345")
+
+        fields = self._entry(self.client.get(reverse("main:get_projects_json")))["fields"]
+
+        self.assertTrue(fields["is_starred"])
+
+    def test_json_filter_with_no_match_returns_empty_list(self):
+        response = self.client.get(reverse("main:get_projects_json"), {"title": "zzz-tidak-ada"})
+
+        self.assertEqual(json.loads(response.content), [])
+
+
+class ExperienceJsonContractTest(TestCase):
+    def setUp(self):
+        self.experience = Experience.objects.create(
+            title="Kontrak Pengalaman",
+            description="Deskripsi.",
+            category="research",
+        )
+        self.owner = User.objects.create_superuser(
+            username="exp_owner", password="pass12345", email="exp@example.com"
+        )
+        self.starrer = User.objects.create_user(username="exp_starrer", password="pass12345")
+        self.experience.starred_by.add(self.starrer)
+
+    def _entry(self, response):
+        data = json.loads(response.content)
+        return next(entry for entry in data if entry["pk"] == str(self.experience.id))
+
+    def test_json_includes_category_display_and_status_fields(self):
+        fields = self._entry(self.client.get(reverse("main:get_experience_json")))["fields"]
+
+        self.assertEqual(fields["category_display"], "Research")
+        self.assertEqual(fields["star_count"], 1)
+        self.assertIsNone(fields["ended_at"])
+
+    def test_anonymous_does_not_see_starred_by_names(self):
+        fields = self._entry(self.client.get(reverse("main:get_experience_json")))["fields"]
+
+        self.assertNotIn("starred_by_names", fields)
+
+    def test_superuser_sees_starred_by_names(self):
+        self.client.login(username="exp_owner", password="pass12345")
+
+        fields = self._entry(self.client.get(reverse("main:get_experience_json")))["fields"]
+
+        self.assertEqual(fields["starred_by_names"], "exp_starrer")
+
+    def test_empty_search_returns_empty_list(self):
+        response = self.client.get(reverse("main:get_experience_json"), {"title": "zzz-tidak-ada"})
+
+        self.assertEqual(json.loads(response.content), [])
+
+
+class AjaxPageConfigTest(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_superuser(
+            username="cfg_owner", password="pass12345", email="cfg@example.com"
+        )
+        self.regular = User.objects.create_user(username="cfg_regular", password="pass12345")
+
+    def test_experience_page_config_grants_delete_and_change_to_owner(self):
+        self.client.login(username="cfg_owner", password="pass12345")
+
+        response = self.client.get(reverse("main:show_experience"))
+
+        self.assertContains(response, "canChange: true,")
+        self.assertContains(response, "canDelete: true,")
+
+    def test_experience_page_config_denies_delete_and_change_to_regular_user(self):
+        self.client.login(username="cfg_regular", password="pass12345")
+
+        response = self.client.get(reverse("main:show_experience"))
+
+        self.assertContains(response, "canChange: false,")
+        self.assertContains(response, "canDelete: false,")
+
+    def test_project_page_config_reflects_superuser_flag(self):
+        self.client.login(username="cfg_regular", password="pass12345")
+
+        response = self.client.get(reverse("main:show_projects"))
+
+        self.assertContains(response, "isSuperuser: false,")
+
+    def test_show_experience_ignores_starred_filter_for_anonymous(self):
+        response = self.client.get(reverse("main:show_experience"), {"starred": "1"})
+
+        self.assertFalse(response.context["starred_query"])
 
 
 # ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #
