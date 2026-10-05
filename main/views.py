@@ -1,8 +1,7 @@
 from django.contrib import messages
-from django.core import serializers
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required 
 from django.views.decorators.http import require_POST 
@@ -189,13 +188,7 @@ def delete_project(request, project_id):
 # -------------------------------- Experience -------------------------------- #
 
 def show_experience(request):
-    json_response = get_experience_json(request)
-
-    experiences = serializers.deserialize(
-        "json",
-        json_response.content.decode("utf-8"),
-    )
-    experiences = [experience.object for experience in experiences]
+    experiences = _filtered_experiences(request)
     title_query = request.GET.get("title", "").strip()
     category_query = request.GET.get("category", "").strip()
     sort_query = request.GET.get("sort", "title").strip()
@@ -214,7 +207,7 @@ def show_experience(request):
     }
     return render(request, "experience.html", context)
 
-def get_experience_json(request):
+def _filtered_experiences(request):
     title_query = request.GET.get("title", "").strip()
     category_query = request.GET.get("category", "").strip()
     sort_query = request.GET.get("sort", "title").strip()
@@ -233,17 +226,33 @@ def get_experience_json(request):
     if starred_only:
         experiences = experiences.filter(starred_by=request.user)
 
-    experiences = experiences.order_by(sort_query)
+    return experiences.order_by(sort_query)
 
-    if request.user.is_superuser:
-        projects_json = serializers.serialize("json", experiences, use_natural_foreign_keys=True)
-    else:
-        projects_json = serializers.serialize(
-            "json",
-            experiences,
-            fields=["title", "description", "category", "thumbnail", "started_at", "ended_at"],
-        )
-    return HttpResponse(projects_json, content_type="application/json")
+def get_experience_json(request):
+    experiences = _filtered_experiences(request)
+
+    data = []
+
+    for experience in experiences:
+        starred_users = experience.starred_by.all()
+        is_starred = request.user in starred_users if request.user.is_authenticated else False
+
+        fields = {
+            "title": experience.title,
+            "description": experience.description,
+            "category": experience.category,
+            "thumbnail": experience.thumbnail,
+            "started_at": experience.started_at,
+            "ended_at": experience.ended_at,
+            "star_count": starred_users.count(),
+            "is_starred": is_starred,
+        }
+        if request.user.is_superuser:
+            fields["starred_by_names"] = ", ".join(u.username for u in starred_users)
+
+        data.append({"pk": str(experience.id), "fields": fields})
+
+    return JsonResponse(data, safe=False)
 
 @login_required(login_url="/login/")
 def create_experience(request):
@@ -262,6 +271,24 @@ def create_experience(request):
         "form": form,
     }
     return render(request, "experience_form.html", context)
+
+@require_POST
+def create_experience_ajax(request):
+    if not request.user.is_superuser:
+        return JsonResponse(
+            {"message": "Hanya pemilik portofolio yang dapat menambahkan proyek."},
+            status=403,
+        )
+
+    form = ExperienceForm(request.POST)
+    if form.is_valid():
+        experience = form.save()
+        return JsonResponse(
+            {"message": "Experience berhasil ditambahkan.", "pk": str(experience.id)},
+            status=201,
+        )
+
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
 @login_required(login_url="/login/")
 def update_experience(request, experience_id):
