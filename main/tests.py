@@ -8,7 +8,10 @@ from django.utils import timezone
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
+from main.forms import ExperienceForm, ProjectForm
 from main.models import Experience, Project
 
 
@@ -871,6 +874,175 @@ class AjaxPageConfigTest(TestCase):
         response = self.client.get(reverse("main:show_experience"), {"starred": "1"})
 
         self.assertFalse(response.context["starred_query"])
+
+
+class CreateExperienceAjaxTest(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_superuser(
+            username="exp_add_owner", password="pass12345", email="expadd@example.com"
+        )
+        self.regular = User.objects.create_user(username="exp_add_regular", password="pass12345")
+        self.editor = User.objects.create_user(username="exp_add_editor", password="pass12345")
+        editor_group, _ = Group.objects.get_or_create(name="Editor")
+        editor_group.permissions.set(Permission.objects.filter(
+            content_type__app_label="main",
+            codename__in=["change_project", "change_experience"],
+        ))
+        self.editor.groups.add(editor_group)
+
+        self.url = reverse("main:create_experience_ajax")
+        self.valid_data = {
+            "title": "Pengalaman AJAX",
+            "description": "Dibuat lewat AJAX.",
+            "category": "volunteer",
+        }
+
+    def test_owner_can_create_experience_via_ajax(self):
+        self.client.login(username="exp_add_owner", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Experience.objects.filter(title="Pengalaman AJAX").exists())
+        self.assertIn("pk", json.loads(response.content))
+
+    def test_invalid_ajax_post_returns_400_with_errors(self):
+        self.client.login(username="exp_add_owner", password="pass12345")
+
+        response = self.client.post(self.url, data={**self.valid_data, "title": ""})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("title", json.loads(response.content)["errors"])
+        self.assertFalse(Experience.objects.filter(description="Dibuat lewat AJAX.").exists())
+
+    def test_regular_user_cannot_create_experience_via_ajax(self):
+        self.client.login(username="exp_add_regular", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Experience.objects.filter(title="Pengalaman AJAX").exists())
+
+    def test_editor_cannot_create_experience_via_ajax(self):
+        self.client.login(username="exp_add_editor", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Experience.objects.filter(title="Pengalaman AJAX").exists())
+
+    def test_anonymous_cannot_create_experience_via_ajax(self):
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Experience.objects.filter(title="Pengalaman AJAX").exists())
+
+    def test_get_on_experience_ajax_endpoint_is_not_allowed(self):
+        self.client.login(username="exp_add_owner", password="pass12345")
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_add_button_and_modal_shown_only_to_owner(self):
+        self.client.login(username="exp_add_owner", password="pass12345")
+        owner_page = self.client.get(reverse("main:show_experience")).content.decode()
+        self.client.logout()
+        self.client.login(username="exp_add_editor", password="pass12345")
+        editor_page = self.client.get(reverse("main:show_experience")).content.decode()
+
+        self.assertIn('id="add-experience-modal"', owner_page)
+        self.assertNotIn('id="add-experience-modal"', editor_page)
+
+
+class FormSanitizationTest(TestCase):
+    def test_project_name_and_description_strip_tags(self):
+        form = ProjectForm(data={
+            "name": '<img src=x onerror="alert(1)">Proyek',
+            "description": "<b>tebal</b> teks",
+            "category": "general",
+            "image_url": "https://example.com/a.png",
+            "project_url": "https://example.com",
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["name"], "Proyek")
+        self.assertEqual(form.cleaned_data["description"], "tebal teks")
+
+    def test_experience_title_and_description_strip_tags(self):
+        form = ExperienceForm(data={
+            "title": "<i>Halo Dunia</i>",
+            "description": "<script>x</script>Deskripsi",
+            "category": "part-time",
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["title"], "Halo Dunia")
+        self.assertEqual(form.cleaned_data["description"], "xDeskripsi")
+
+    def test_saved_experience_has_no_tags(self):
+        self.client.force_login(User.objects.create_superuser(
+            username="sanit_owner", password="pass12345", email="s@example.com"
+        ))
+
+        self.client.post(reverse("main:create_experience_ajax"), data={
+            "title": "<i>Judul</i>",
+            "description": "Deskripsi",
+            "category": "research",
+        })
+
+        self.assertEqual(Experience.objects.get(description="Deskripsi").title, "Judul")
+
+
+class XssBrowserTest(StaticLiveServerTestCase):
+    XSS_PAYLOAD = '<img src=x onerror="window.__xss=1">'
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        options = Options()
+        options.add_argument("--headless=new")
+        options.add_argument("--window-size=1920,1080")
+        cls.selenium = webdriver.Chrome(options=options)
+        cls.wait = WebDriverWait(cls.selenium, 10)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.selenium.quit()
+        super().tearDownClass()
+
+    def test_project_card_escapes_name_and_blocks_javascript_url(self):
+        Project.objects.create(
+            name=self.XSS_PAYLOAD + "XSSPROJ",
+            description="<b>deskripsi</b>",
+            category="general",
+            project_url="javascript:window.__xss=2",
+        )
+
+        self.selenium.get(self.live_server_url + reverse("main:show_projects"))
+        card = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, "//div[@id='grid']//h2[contains(., 'XSSPROJ')]"))
+        )
+
+        self.assertIsNone(self.selenium.execute_script("return window.__xss"))
+        self.assertIn("<img", card.text)
+        for link in self.selenium.find_elements(By.CSS_SELECTOR, "#grid a"):
+            self.assertFalse((link.get_attribute("href") or "").startswith("javascript:"))
+
+    def test_experience_card_escapes_title(self):
+        Experience.objects.create(
+            title=self.XSS_PAYLOAD + "XSSEXP",
+            description="Deskripsi",
+            category="research",
+        )
+
+        self.selenium.get(self.live_server_url + reverse("main:show_experience"))
+        card = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, "//div[@id='grid']//h2[contains(., 'XSSEXP')]"))
+        )
+
+        self.assertIsNone(self.selenium.execute_script("return window.__xss"))
+        self.assertIn("<img", card.text)
 
 
 # ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #
