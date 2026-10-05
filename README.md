@@ -172,3 +172,35 @@ Seperti tugas sebelumnya, AI digunakan terutama untuk tugas repetitif (seperti w
 - Menjalankan Claude Code dalam manual approval mode (bukan auto-accept), sehingga setiap perubahan/edit yang diajukan AI harus ditinjau dan disetujui secara eksplisit satu per satu.
 - Semua kode hasil AI ditinjau dan diuji secara manual sebelum di-commit.
 - Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).
+
+### Tugas 5
+
+1. Debouncing adalah teknik yang mengontrol seberapa banyak pemanggilan fungsi dengan menunda pemanggilannya supaya pemanggilan dapat di-group menjadi satu dibandingkan banyak kali pemanggilan. Umumnya, implementasi search bar dengan AJAX mengirim request setiap kali user menginput satu karakter, alhasil jika user mengetikkan "mempertanggungjawabkan" ke search bar, client mengirimkan request searching dengan keyword "m", "me", "mem",..., "mempertanggungjawabkan" ke server (22 kali). Hal ini dapat membebani kerja server dan bandwith client. Selain itu, implementasi ini dapat menimbulkan race condition, semisal user searching "flutter" ketika query "flutte" selesai belakangan dari query "flutter", maka yang ditampilkan oleh site bisa saja hasil query "flutte" (karena ditimpa). Debouncing mencegah kedua skenario ini, dengan mengirimkan request search tersebut setelah durasi waktu tertentu (misal 500ms), client tidak lagi mengirimkan request secara besar-besaran, melainkan sudah di-grouping berdasarkan input pada saat penggunanya berhenti mengetik selama beberapa milisecond.
+
+2. Fungsi `fetch()` di JavaScript mengembalikan tipe data `Promise`, yang merepresentasikan placeholder dari data yang membutuhkan waktu untuk diproses/diselesaikan. Untuk benar-benar memanfaatkan data asli yang diperoleh dari `fetch`, kita harus menunggu `Promise` selesai pending dan telah di-fulfill. Untuk menunggunya, fungsi async harus dihentikan sementara dengan keyword `await`, dengan ini, ketika status `Promise` sudah di-fulfill akan didapatkan objek `Response`. Hal yang terjadi jika keyword `await` tidak digunakan adalah:
+
+   > Karena `Promise` tidak ditunggu untuk menjadi `Response` terlebih dahulu, data yang diharapkan ada pada hasil `fetch()` akan menghasilkan behaviour tidak terdefinisi karena pada saat ini data belum exist pada objek `Promise`, alhasil menghasilkan runtime error atau mengembalikan value `undefined`.
+
+3. Cross-Site Scripting (XSS) adalah jenis serangan keamanan di mana penyerang berhasil menyisipkan skrip eksploitatif (biasanya berupa skrip JavaScript) ke dalam input atau bentuk konten lainnya yang ditampilkan oleh situs web target penyerangan. Karena Django pada dasarnya merupakan framework yang sangat "batteries-included", engine pada Django secara default sudah menerapkan pencegahan XSS seperti menerapkan auto-escaping (mengubah karakter khusus HTML menjadi bentuk HTML entities, seperti `<` menjadi `&lt;`). Dengan AJAX, implementasinya seringkali memasukkan string HTML ke dalam DOM menggunakan properti `innerHTML`, yang secara mentah-mentah meletakkan string pada HTML, mau dia akan dieksekusi sebagai elemen HTML atau tidak. Oleh karena itu, developer harus mensanitasi input atau menggunakan properti yang aman dari code execution seperti `textContent`/`innerText`.
+
+#### AI Disclosure: Tugas 5
+
+As usual, AI digunakan terutama untuk tugas repetitif (seperti writing tests), styling fixes, dan debugging.
+
+##### Tools yang Digunakan
+
+- Claude Code: digunakan untuk membantu styling, debugging, dan write unit tests.
+
+> Catatan: Log penggunaan Claude Code disediakan di folder `logs/`
+
+##### Bagian Spesifik yang Dibantu AI
+
+1. Write unit test untuk input sanitization, AJAX, and XSS protection.
+2. Debugging
+3. Penyesuaian dark mode dengan styling modal
+
+##### Strategi Prompting
+
+- Menjalankan Claude Code dalam manual approval mode (bukan auto-accept), sehingga setiap perubahan/edit yang diajukan AI harus ditinjau dan disetujui secara eksplisit satu per satu.
+- Semua kode hasil AI ditinjau dan diuji secara manual sebelum di-commit.
+- Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).

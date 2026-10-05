@@ -1,4 +1,5 @@
 from django.forms import ModelForm, TextInput, Textarea, URLInput, Select, DateInput
+from django.utils.html import strip_tags
 
 from main.models import Experience, Project
 
@@ -51,6 +52,12 @@ class ProjectForm(ModelForm):
             ),
         }
 
+    def clean_name(self):
+        return strip_tags(self.cleaned_data["name"]).strip()
+
+    def clean_description(self):
+        return strip_tags(self.cleaned_data["description"]).strip()
+
 class ExperienceForm(ModelForm):
     class Meta:
         model = Experience
@@ -100,3 +107,9 @@ class ExperienceForm(ModelForm):
                 }
             ),
         }
+
+    def clean_title(self):
+        return strip_tags(self.cleaned_data["title"]).strip()
+
+    def clean_description(self):
+        return strip_tags(self.cleaned_data["description"]).strip()

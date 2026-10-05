@@ -14,7 +14,7 @@
 	transition: all 0.3s ease;
 	background-color: var(--paper);
 	border: 1px solid var(--line);
-	color: inherit;
+	color: var(--ink);
 }
 
 .toast-component:popover-open {
