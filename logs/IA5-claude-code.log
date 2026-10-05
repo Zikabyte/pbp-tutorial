@@ -1,0 +1,709 @@
+Jarvis, tolong dilengkapi unit testsnya yh
+Bash List current test classes and methods and ajax routes
+IN
+grep -n "ajax" main/urls.py; grep -n "^class \|    def test_" main/tests.py | awk -F: '{print $1": "$2}' | tail -80
+
+OUT
+6:    create_project_ajax,
+39:    path("projects/add-ajax/", create_project_ajax, name="create_project_ajax"),
+15: class MainTest(TestCase)
+37:     def test_main_url_is_accessible(self)
+46:     def test_nonexistent_page_returns_404(self)
+51:     def test_experience_model(self)
+56:     def test_experience_page(self)
+67:     def test_experience_json_contains_expected_fields(self)
+76:     def test_empty_experience_page_json_returns_empty_list(self)
+83:     def test_completed_experience_json_has_ended_at(self)
+93:     def test_create_experience_view_get(self)
+99:     def test_create_experience_valid_post(self)
+109:     def test_create_experience_invalid_post_does_not_create(self)
+120:     def test_update_experience_view_get_prefills_form(self)
+127:     def test_update_experience_valid_post(self)
+141:     def test_update_nonexistent_experience_returns_404(self)
+148:     def test_delete_experience_post_removes_it(self)
+154:     def test_delete_experience_get_does_not_remove_it(self)
+160:     def test_get_experience_json(self)
+169:     def test_get_experience_json_filters_by_title(self)
+182:     def test_get_experience_json_filters_by_category(self)
+195:     def test_get_experience_json_sorted_by_title_desc(self)
+208:     def test_show_experience_defaults_to_sort_by_title(self)
+215:     def test_project_page(self)
+227:     def test_empty_project_page_json_returns_empty_list(self)
+236:     def test_project_model(self)
+240:     def test_create_project_view_get(self)
+246:     def test_create_project_valid_post(self)
+258:     def test_create_project_invalid_post_does_not_create(self)
+269:     def test_update_project_view_get_prefills_form(self)
+276:     def test_update_project_valid_post(self)
+292:     def test_update_nonexistent_project_returns_404(self)
+299:     def test_delete_project_post_removes_it(self)
+305:     def test_delete_project_get_does_not_remove_it(self)
+311:     def test_get_projects_json(self)
+320:     def test_get_projects_json_filters_by_title_param(self)
+334:     def test_get_projects_json_filters_by_category(self)
+348:     def test_get_projects_json_sorted_by_name_desc(self)
+361:     def test_get_projects_json_ignores_invalid_sort_value(self)
+366:     def test_show_projects_defaults_to_sort_by_name(self)
+374: class AuthTest(TestCase)
+375:     def test_register_view_get(self)
+381:     def test_register_valid_post_creates_user(self)
+391:     def test_register_password_mismatch_does_not_create_user(self)
+401:     def test_login_valid_credentials_logs_in_and_sets_cookie(self)
+413:     def test_login_invalid_credentials_does_not_log_in(self)
+422:     def test_logout_clears_session_and_cookie(self)
+434: class PermissionTest(TestCase)
+463:     def test_anonymous_visiting_create_project_redirects_to_login(self)
+471:     def test_anonymous_visiting_update_experience_redirects_to_login(self)
+480:     def test_regular_user_cannot_create_project(self)
+487:     def test_regular_user_cannot_update_project(self)
+494:     def test_regular_user_cannot_create_experience(self)
+502:     def test_editor_cannot_create_project(self)
+509:     def test_editor_can_update_project(self)
+527:     def test_editor_cannot_delete_project(self)
+535:     def test_editor_can_update_experience(self)
+551:     def test_editor_cannot_delete_experience(self)
+560:     def test_owner_can_create_and_delete_project(self)
+578: class StarTest(TestCase)
+592:     def test_anonymous_cannot_toggle_project_star(self)
+600:     def test_logged_in_user_can_star_and_unstar_project(self)
+610:     def test_starring_project_twice_does_not_duplicate(self)
+616:     def test_logged_in_user_can_star_and_unstar_experience(self)
+627:     def test_starred_filter_only_shows_projects_i_starred(self)
+642:     def test_starred_filter_only_shows_experiences_i_starred(self)
+657:     def test_starred_filter_ignored_for_anonymous_user(self)
+673: class ApiSecurityTest(TestCase)
+686:     def test_anonymous_does_not_see_starred_by_in_json(self)
+696:     def test_superuser_sees_starred_by_in_json(self)
+708: class NavbarFunctionalTest(StaticLiveServerTestCase)
+722:     def test_navbar_links_to_all_pages(self)
+734:     def test_dark_mode_toggle(self)
+Celahnya: endpoint AJAX create project, shape JSON (star_count/is_starred, category_display, starred_by_names), dan flag konfigurasi di template. create_experience_ajax belum di-route, jadi saya tidak tes itu.
+
+
+
+Bash Add AJAX and JSON contract unit tests and run them
+IN
+python3 - <<'EOF'
+path = "main/tests.py"
+src = open(path, encoding="utf-8").read()
+marker = "# ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #"
+assert src.count(marker) == 1
+
+new_tests = '''# ------------------------------ AJAX & Data Contract ----------------------------- #
+class CreateProjectAjaxTest(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_superuser(
+            username="ajax_owner", password="pass12345", email="ajax@example.com"
+        )
+        self.regular = User.objects.create_user(username="ajax_regular", password="pass12345")
+        self.url = reverse("main:create_project_ajax")
+        self.valid_data = {
+            "name": "Proyek AJAX",
+            "description": "Dibuat lewat AJAX.",
+            "image_url": "https://example.com/image.png",
+            "category": "general",
+            "project_url": "https://example.com/project",
+        }
+
+    def test_owner_can_create_project_via_ajax(self):
+        self.client.login(username="ajax_owner", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Project.objects.filter(name="Proyek AJAX").exists())
+        self.assertIn("pk", json.loads(response.content))
+
+    def test_invalid_ajax_post_returns_400_with_errors(self):
+        self.client.login(username="ajax_owner", password="pass12345")
+
+        response = self.client.post(self.url, data={**self.valid_data, "name": ""})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("name", json.loads(response.content)["errors"])
+        self.assertFalse(Project.objects.filter(description="Dibuat lewat AJAX.").exists())
+
+    def test_regular_user_cannot_create_project_via_ajax(self):
+        self.client.login(username="ajax_regular", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Project.objects.filter(name="Proyek AJAX").exists())
+
+    def test_anonymous_cannot_create_project_via_ajax(self):
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Project.objects.filter(name="Proyek AJAX").exists())
+
+    def test_get_on_ajax_create_endpoint_is_not_allowed(self):
+        self.client.login(username="ajax_owner", password="pass12345")
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 405)
+
+
+class ProjectJsonContractTest(TestCase):
+    def setUp(self):
+        self.project = Project.objects.create(
+            name="Kontrak JSON",
+            description="Deskripsi.",
+            category="web-development",
+        )
+        self.starrer = User.objects.create_user(username="kontrak_starrer", password="pass12345")
+        self.project.starred_by.add(self.starrer)
+
+    def _entry(self, response):
+        data = json.loads(response.content)
+        return next(entry for entry in data if entry["pk"] == str(self.project.id))
+
+    def test_json_includes_ui_fields_for_anonymous(self):
+        fields = self._entry(self.client.get(reverse("main:get_projects_json")))["fields"]
+
+        self.assertEqual(fields["name"], "Kontrak JSON")
+        self.assertEqual(fields["star_count"], 1)
+        self.assertFalse(fields["is_starred"])
+        self.assertNotIn("starred_by_names", fields)
+
+    def test_is_starred_true_for_user_who_starred(self):
+        self.client.login(username="kontrak_starrer", password="pass12345")
+
+        fields = self._entry(self.client.get(reverse("main:get_projects_json")))["fields"]
+
+        self.assertTrue(fields["is_starred"])
+
+    def test_json_filter_with_no_match_returns_empty_list(self):
+        response = self.client.get(reverse("main:get_projects_json"), {"title": "zzz-tidak-ada"})
+
+        self.assertEqual(json.loads(response.content), [])
+
+
+class ExperienceJsonContractTest(TestCase):
+    def setUp(self):
+        self.experience = Experience.objects.create(
+            title="Kontrak Pengalaman",
+            description="Deskripsi.",
+            category="research",
+        )
+        self.owner = User.objects.create_superuser(
+            username="exp_owner", password="pass12345", email="exp@example.com"
+        )
+        self.starrer = User.objects.create_user(username="exp_starrer", password="pass12345")
+        self.experience.starred_by.add(self.starrer)
+
+    def _entry(self, response):
+        data = json.loads(response.content)
+        return next(entry for entry in data if entry["pk"] == str(self.experience.id))
+
+    def test_json_includes_category_display_and_status_fields(self):
+        fields = self._entry(self.client.get(reverse("main:get_experience_json")))["fields"]
+
+        self.assertEqual(fields["category_display"], "Research")
+        self.assertEqual(fields["star_count"], 1)
+        self.assertIsNone(fields["ended_at"])
+
+    def test_anonymous_does_not_see_starred_by_names(self):
+        fields = self._entry(self.client.get(reverse("main:get_experience_json")))["fields"]
+
+        self.assertNotIn("starred_by_names", fields)
+
+    def test_superuser_sees_starred_by_names(self):
+        self.client.login(username="exp_owner", password="pass12345")
+
+        fields = self._entry(self.client.get(reverse("main:get_experience_json")))["fields"]
+
+        self.assertEqual(fields["starred_by_names"], "exp_starrer")
+
+    def test_empty_search_returns_empty_list(self):
+        response = self.client.get(reverse("main:get_experience_json"), {"title": "zzz-tidak-ada"})
+
+        self.assertEqual(json.loads(response.content), [])
+
+
+class AjaxPageConfigTest(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_superuser(
+            username="cfg_owner", password="pass12345", email="cfg@example.com"
+        )
+        self.regular = User.objects.create_user(username="cfg_regular", password="pass12345")
+
+    def test_experience_page_config_grants_delete_and_change_to_owner(self):
+        self.client.login(username="cfg_owner", password="pass12345")
+
+        response = self.client.get(reverse("main:show_experience"))
+
+        self.assertContains(response, "canChange: true,")
+        self.assertContains(response, "canDelete: true,")
+
+    def test_experience_page_config_denies_delete_and_change_to_regular_user(self):
+        self.client.login(username="cfg_regular", password="pass12345")
+
+        response = self.client.get(reverse("main:show_experience"))
+
+        self.assertContains(response, "canChange: false,")
+        self.assertContains(response, "canDelete: false,")
+
+    def test_project_page_config_reflects_superuser_flag(self):
+        self.client.login(username="cfg_regular", password="pass12345")
+
+        response = self.client.get(reverse("main:show_projects"))
+
+        self.assertContains(response, "isSuperuser: false,")
+
+    def test_show_experience_ignores_starred_filter_for_anonymous(self):
+        response = self.client.get(reverse("main:show_experience"), {"starred": "1"})
+
+        self.assertFalse(response.context["starred_query"])
+
+
+'''
+src = src.replace(marker, new_tests + marker)
+open(path, "w", encoding="utf-8").write(src)
+print("ok")
+EOF
+./.venv/Scripts/python.exe manage.py test main.tests.CreateProjectAjaxTest main.tests.ProjectJsonContractTest main.tests.ExperienceJsonContractTest main.tests.AjaxPageConfigTest -v 1 2>&1 | tail -60
+
+OUT
+ok
+Creating test database for alias 'default'...
+
+................
+----------------------------------------------------------------------
+Ran 16 tests in 21.213s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 16 test(s).
+System check identified no issues (0 silenced).
+16 test baru lulus. Sekarang full suite termasuk Selenium — saya jalankan di background karena makan waktu.
+
+
+
+Bash Run full test suite including Selenium
+IN
+./.venv/Scripts/python.exe manage.py test main 2>&1 | tail -15
+
+OUT
+Command running in background with ID: bni1rg1bs. Output is being written to: C:\Users\MZIDA_~1\AppData\Local\Temp\claude\c--Users-mzida-yqzansz-Projects-academic-pbp-pbp-tutorial-0\8a3d0915-552e-4440-86a3-b298eaebb2d7\tasks\bni1rg1bs.output. You will be notified when it completes. To check interim output, use Read on that file path.
+Saya tambah 16 unit test baru di main/tests.py, semuanya lulus. Full suite (termasuk Selenium) lagi jalan di background; hasilnya saya laporkan begitu selesai.
+
+Test baru:
+
+CreateProjectAjaxTest — endpoint create_project_ajax: owner dapat 201 dan data tersimpan, POST invalid dapat 400 dengan error field, user biasa dan anonim dapat 403, GET dapat 405.
+ProjectJsonContractTest — bentuk JSON project untuk anonim (star_count, is_starred, tanpa starred_by_names), is_starred true untuk user yang sudah star, dan pencarian tanpa hasil menghasilkan list kosong.
+ExperienceJsonContractTest — category_display dan star_count ada, ended_at null untuk yang masih berjalan, starred_by_names hanya untuk superuser, dan pencarian kosong menghasilkan list kosong.
+AjaxPageConfigTest — flag canChange/canDelete di halaman Experience sesuai hak akses (owner true, user biasa false), flag isSuperuser di halaman Project, dan filter starred diabaikan untuk anonim.
+Tidak saya tes: create_experience_ajax, karena belum di-route di urls.py. Kalau mau dipakai, route-nya perlu ditambahkan dulu.
+
+
+
+Bash Read final full test suite output
+IN
+cat "C:\Users\MZIDA_~1\AppData\Local\Temp\claude\c--Users-mzida-yqzansz-Projects-academic-pbp-pbp-tutorial-0\8a3d0915-552e-4440-86a3-b298eaebb2d7\tasks\bni1rg1bs.output"
+
+OUT
+Creating test database for alias 'default'...
+
+.................................................................................[05/Oct/2026 15:58:22,356] - Broken pipe from ('127.0.0.1', 62777)
+[05/Oct/2026 15:58:22,357] - Broken pipe from ('127.0.0.1', 51524)
+[05/Oct/2026 15:58:22,361] - Broken pipe from ('127.0.0.1', 64269)
+[05/Oct/2026 15:58:22,362] - Broken pipe from ('127.0.0.1', 56567)
+[05/Oct/2026 15:58:22,363] - Broken pipe from ('127.0.0.1', 63098)
+
+----------------------------------------------------------------------
+Ran 81 tests in 134.194s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 81 test(s).
+System check identified no issues (0 silenced).
+
+[exited with code 0]
+Full suite selesai: 81 test lulus, 0 gagal, termasuk Selenium.
+
+Yang ditambahkan di main/tests.py di atas 16 test sebelumnya:
+
+Create project via AJAX: owner dapat 201, POST invalid dapat 400 dengan error, user biasa dan anonim dapat 403, GET dapat 405.
+Kontrak JSON project: star_count dan is_starred benar, starred_by_names disembunyikan dari anonim, pencarian tanpa hasil mengembalikan list kosong.
+Kontrak JSON experience: category_display dan star_count ada, starred_by_names hanya untuk superuser.
+Konfigurasi halaman AJAX: flag canChange/canDelete di halaman Experience mengikuti hak akses, flag isSuperuser di halaman Project benar, dan filter starred diabaikan untuk anonim.
+create_experience_ajax belum dites karena belum di-route di urls.py.
+
+image.png
+552×798
+experience.js#39-39
+Ini gimana nih? Artinya aman kah dari tags?
+Aman. Judul <i>Halo Dunia</i> tampil sebagai teks mentah, jadi browser tidak menafsirkannya sebagai tag. Itu hasil dari escapeHtml di experience.js, yang mengubah < jadi &lt; sebelum disisipkan ke HTML.
+
+Ada satu catatan. Data tag-nya tetap tersimpan di database. Bagian itu baru ditutup oleh poin 2 (strip_tags di clean_<field>), dan belum kita kerjakan. Jadi saat ini perlindungannya ada di tampilan, belum di input.
+
+
+
+Kalau strip tags itu gimana ya?
+strip_tags itu fungsi Django (django.utils.html.strip_tags) yang menghapus tag HTML dari sebuah string dan menyisakan teksnya. Contohnya:
+
+
+strip_tags("<i>Halo Dunia</i>")   # -> "Halo Dunia"
+strip_tags("<img src=x onerror=alert(1)>Nama")  # -> "Nama"
+Di ModelForm, cara pakainya lewat method clean_<nama_field>. Django memanggilnya saat form.is_valid(), sebelum data disimpan:
+
+
+from django.utils.html import strip_tags
+
+class ExperienceForm(ModelForm):
+    ...
+    def clean_title(self):
+        return strip_tags(self.cleaned_data["title"]).strip()
+
+    def clean_description(self):
+        return strip_tags(self.cleaned_data["description"]).strip()
+Dengan begitu data yang masuk ke database sudah bersih, dan dibuat juga untuk field teks lain yang relevan (name di ProjectForm, dll.).
+
+Dua catatan:
+
+Input yang sudah tersimpan sebelum ini tidak ikut bersih. Perlu dibersihkan manual atau lewat seed/migrasi kalau mau.
+strip_tags tidak menggantikan escaping di tampilan. Itu tetap perlu, karena sisi JS kita tetap menyisipkan data ke HTML. Keduanya saling melengkapi.
+Mau saya terapkan ke ProjectForm dan ExperienceForm sekarang?
+Can you write tests untuk yang baru atau belum ke-cover sama tests.py
+Oke, kali ini kamu minta. Saya cek dulu apa yang belum tercover.
+
+
+
+Bash List tests added after the AJAX project tests and check experience AJAX coverage
+IN
+grep -n "^class \|def test_" main/tests.py | sed -n '/CreateProjectAjaxTest/,$p' | head -60; grep -n "create_experience_ajax" main/tests.py
+
+OUT
+708:class CreateProjectAjaxTest(TestCase):
+723:    def test_owner_can_create_project_via_ajax(self):
+732:    def test_invalid_ajax_post_returns_400_with_errors(self):
+741:    def test_regular_user_cannot_create_project_via_ajax(self):
+749:    def test_anonymous_cannot_create_project_via_ajax(self):
+755:    def test_get_on_ajax_create_endpoint_is_not_allowed(self):
+763:class ProjectJsonContractTest(TestCase):
+777:    def test_json_includes_ui_fields_for_anonymous(self):
+785:    def test_is_starred_true_for_user_who_starred(self):
+792:    def test_json_filter_with_no_match_returns_empty_list(self):
+798:class ExperienceJsonContractTest(TestCase):
+815:    def test_json_includes_category_display_and_status_fields(self):
+822:    def test_anonymous_does_not_see_starred_by_names(self):
+827:    def test_superuser_sees_starred_by_names(self):
+834:    def test_empty_search_returns_empty_list(self):
+840:class AjaxPageConfigTest(TestCase):
+847:    def test_experience_page_config_grants_delete_and_change_to_owner(self):
+855:    def test_experience_page_config_denies_delete_and_change_to_regular_user(self):
+863:    def test_project_page_config_reflects_superuser_flag(self):
+870:    def test_show_experience_ignores_starred_filter_for_anonymous(self):
+877:class NavbarFunctionalTest(StaticLiveServerTestCase):
+891:    def test_navbar_links_to_all_pages(self):
+903:    def test_dark_mode_toggle(self):
+CreateExperienceAjaxTest dan FormSanitizationTest dua-duanya tidak ada di file sekarang. Saya tulis keduanya lagi, dan cek import form-nya juga.
+
+
+
+Bash Re-add the missing experience AJAX and sanitization tests and run them
+IN
+python3 - <<'EOF'
+p = "main/tests.py"
+s = open(p, encoding="utf-8").read()
+marker = "# ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #"
+assert s.count(marker) == 1 and "CreateExperienceAjaxTest" not in s and "FormSanitizationTest" not in s
+
+if "from main.forms import" not in s:
+    s = s.replace("from main.models import Experience, Project\n",
+                  "from main.forms import ExperienceForm, ProjectForm\nfrom main.models import Experience, Project\n", 1)
+
+new = '''class CreateExperienceAjaxTest(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_superuser(
+            username="exp_add_owner", password="pass12345", email="expadd@example.com"
+        )
+        self.regular = User.objects.create_user(username="exp_add_regular", password="pass12345")
+        self.editor = User.objects.create_user(username="exp_add_editor", password="pass12345")
+        editor_group, _ = Group.objects.get_or_create(name="Editor")
+        editor_group.permissions.set(Permission.objects.filter(
+            content_type__app_label="main",
+            codename__in=["change_project", "change_experience"],
+        ))
+        self.editor.groups.add(editor_group)
+
+        self.url = reverse("main:create_experience_ajax")
+        self.valid_data = {
+            "title": "Pengalaman AJAX",
+            "description": "Dibuat lewat AJAX.",
+            "category": "volunteer",
+        }
+
+    def test_owner_can_create_experience_via_ajax(self):
+        self.client.login(username="exp_add_owner", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Experience.objects.filter(title="Pengalaman AJAX").exists())
+        self.assertIn("pk", json.loads(response.content))
+
+    def test_invalid_ajax_post_returns_400_with_errors(self):
+        self.client.login(username="exp_add_owner", password="pass12345")
+
+        response = self.client.post(self.url, data={**self.valid_data, "title": ""})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("title", json.loads(response.content)["errors"])
+        self.assertFalse(Experience.objects.filter(description="Dibuat lewat AJAX.").exists())
+
+    def test_regular_user_cannot_create_experience_via_ajax(self):
+        self.client.login(username="exp_add_regular", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Experience.objects.filter(title="Pengalaman AJAX").exists())
+
+    def test_editor_cannot_create_experience_via_ajax(self):
+        self.client.login(username="exp_add_editor", password="pass12345")
+
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Experience.objects.filter(title="Pengalaman AJAX").exists())
+
+    def test_anonymous_cannot_create_experience_via_ajax(self):
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Experience.objects.filter(title="Pengalaman AJAX").exists())
+
+    def test_get_on_experience_ajax_endpoint_is_not_allowed(self):
+        self.client.login(username="exp_add_owner", password="pass12345")
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_add_button_and_modal_shown_only_to_owner(self):
+        self.client.login(username="exp_add_owner", password="pass12345")
+        owner_page = self.client.get(reverse("main:show_experience")).content.decode()
+        self.client.logout()
+        self.client.login(username="exp_add_editor", password="pass12345")
+        editor_page = self.client.get(reverse("main:show_experience")).content.decode()
+
+        self.assertIn('id="add-experience-modal"', owner_page)
+        self.assertNotIn('id="add-experience-modal"', editor_page)
+
+
+class FormSanitizationTest(TestCase):
+    def test_project_name_and_description_strip_tags(self):
+        form = ProjectForm(data={
+            "name": '<img src=x onerror="alert(1)">Proyek',
+            "description": "<b>tebal</b> teks",
+            "category": "general",
+            "image_url": "https://example.com/a.png",
+            "project_url": "https://example.com",
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["name"], "Proyek")
+        self.assertEqual(form.cleaned_data["description"], "tebal teks")
+
+    def test_experience_title_and_description_strip_tags(self):
+        form = ExperienceForm(data={
+            "title": "<i>Halo Dunia</i>",
+            "description": "<script>x</script>Deskripsi",
+            "category": "part-time",
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["title"], "Halo Dunia")
+        self.assertEqual(form.cleaned_data["description"], "xDeskripsi")
+
+    def test_saved_experience_has_no_tags(self):
+        self.client.force_login(User.objects.create_superuser(
+            username="sanit_owner", password="pass12345", email="s@example.com"
+        ))
+
+        self.client.post(reverse("main:create_experience_ajax"), data={
+            "title": "<i>Judul</i>",
+            "description": "Deskripsi",
+            "category": "research",
+        })
+
+        self.assertEqual(Experience.objects.get(description="Deskripsi").title, "Judul")
+
+
+'''
+s = s.replace(marker, new + marker)
+open(p, "w", encoding="utf-8").write(s)
+print("ok")
+EOF
+grep -n "^from main.forms\|^from django.contrib.auth" main/tests.py; ./.venv/Scripts/python.exe manage.py test main.tests.CreateExperienceAjaxTest main.tests.FormSanitizationTest main.tests.CreateProjectAjaxTest 2>&1 | tail -5
+
+OUT
+ok
+3:from django.contrib.auth.models import Group, Permission, User
+12:from main.forms import ExperienceForm, ProjectForm
+
+OK
+Destroying test database for alias 'default'...
+
+Found 15 test(s).
+System check identified no issues (0 silenced).
+Saya tulis ulang dua test yang belum ada di tests.py dan semuanya lulus (15 test terkait).
+
+CreateExperienceAjaxTest: owner dapat 201 dan data tersimpan. POST invalid dapat 400 dengan error. User biasa, editor, dan anonim dapat 403. GET dapat 405. Tombol dan modal tambah hanya tampil untuk owner.
+FormSanitizationTest: strip_tags pada nama, judul, dan deskripsi, baik lewat form langsung maupun data yang tersimpan lewat endpoint AJAX.
+Yang belum saya tulis:
+
+Escaping dan safeUrl di JS: ini kode JavaScript, jadi tidak bisa diuji dengan unit test Django. Perlu tes browser atau tes JS terpisah, dan itu keputusan kamu.
+Deskripsi yang kosong setelah dibersihkan (misalnya <b></b>): belum ada fiturnya, jadi belum ada yang bisa dites.
+Catatan: keduanya sempat hilang dari file tanpa sepengetahuan saya. Kalau memang kamu yang menghapus, bilang saja supaya saya tidak menulis ulang lagi.
+
+
+
+tests.py
+JS itu testingnya gimana ya?
+Di proyek ini ada dua cara, dan kamu yang pilih mana yang mau dipakai. Saya belum menulis apa-apa, sesuai aturan kamu.
+
+1. Selenium (browser test), sudah ada infra-nya. NavbarFunctionalTest sudah memakai Chrome headless. Untuk JS, tes akan membuka halaman, berinteraksi dengan elemennya, lalu mengecek hasilnya di DOM. Contohnya:
+
+Tes XSS: buat proyek dengan nama <img src=x onerror="window.__xss=1">, buka /project/, lalu cek window.__xss masih undefined dan teksnya tampil apa adanya.
+Tes filter/search: ketik di kolom pencarian, cek kartu yang muncul.
+Tes state: cek loading/empty/error muncul saat seharusnya.
+Kelebihannya: menguji JS yang benar-benar jalan di browser, termasuk fetch() dan innerHTML. Kekurangannya: lambat (sekitar 1-2 menit untuk beberapa tes) dan butuh Chrome.
+
+2. Unit test JS murni (Jest atau Node). Cocok untuk fungsi seperti escapeHtml dan safeUrl, yang tidak menyentuh DOM. Tapi ini butuh setup npm baru, dan escapeHtml/safeUrl sekarang ada di dalam project.js yang juga menjalankan kode DOM saat dimuat. Jadi fungsi itu perlu dipindah ke file helper terpisah dulu.
+
+Menurut saya pilihan 1 lebih sesuai dengan kondisi proyek sekarang, karena infra-nya sudah ada dan yang paling penting untuk diuji adalah perilaku di browser. Mau pakai yang mana?
+
+
+
+boleh via selenium
+Oke, saya tulis tes Selenium untuk escaping dan safeUrl di halaman Projects dan Experience.
+
+
+
+Bash Add Selenium XSS tests for project and experience cards and run them
+IN
+python3 - <<'EOF'
+p = "main/tests.py"
+s = open(p, encoding="utf-8").read()
+marker = "# ----------------- Bonus: Functional Testing w/ Selenium :) ----------------- #"
+assert s.count(marker) == 1 and "XssBrowserTest" not in s
+
+new = '''class XssBrowserTest(StaticLiveServerTestCase):
+    XSS_PAYLOAD = '<img src=x onerror="window.__xss=1">'
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        options = Options()
+        options.add_argument("--headless=new")
+        options.add_argument("--window-size=1920,1080")
+        cls.selenium = webdriver.Chrome(options=options)
+        cls.wait = WebDriverWait(cls.selenium, 10)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.selenium.quit()
+        super().tearDownClass()
+
+    def test_project_card_escapes_name_and_blocks_javascript_url(self):
+        Project.objects.create(
+            name=self.XSS_PAYLOAD + "XSSPROJ",
+            description="<b>deskripsi</b>",
+            category="general",
+            project_url="javascript:window.__xss=2",
+        )
+
+        self.selenium.get(self.live_server_url + reverse("main:show_projects"))
+        card = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, "//div[@id='grid']//h2[contains(., 'XSSPROJ')]"))
+        )
+
+        self.assertIsNone(self.selenium.execute_script("return window.__xss"))
+        self.assertIn("<img", card.text)
+        for link in self.selenium.find_elements(By.CSS_SELECTOR, "#grid a"):
+            self.assertFalse((link.get_attribute("href") or "").startswith("javascript:"))
+
+    def test_experience_card_escapes_title(self):
+        Experience.objects.create(
+            title=self.XSS_PAYLOAD + "XSSEXP",
+            description="Deskripsi",
+            category="research",
+        )
+
+        self.selenium.get(self.live_server_url + reverse("main:show_experience"))
+        card = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, "//div[@id='grid']//h2[contains(., 'XSSEXP')]"))
+        )
+
+        self.assertIsNone(self.selenium.execute_script("return window.__xss"))
+        self.assertIn("<img", card.text)
+
+
+'''
+s = s.replace(marker, new + marker)
+if "from selenium.webdriver.support.ui import WebDriverWait" not in s:
+    s = s.replace("from selenium.webdriver.common.by import By\n",
+        "from selenium.webdriver.common.by import By\nfrom selenium.webdriver.support import expected_conditions as EC\nfrom selenium.webdriver.support.ui import WebDriverWait\n", 1)
+open(p, "w", encoding="utf-8").write(s)
+print("ok")
+EOF
+./.venv/Scripts/python.exe manage.py test main.tests.XssBrowserTest -v 2 2>&1 | tail -30
+
+OUT
+Command running in background with ID: b371eqdap. Output is being written to: C:\Users\MZIDA_~1\AppData\Local\Temp\claude\c--Users-mzida-yqzansz-Projects-academic-pbp-pbp-tutorial-0\8a3d0915-552e-4440-86a3-b298eaebb2d7\tasks\b371eqdap.output. You will be notified when it completes. To check interim output, use Read on that file path.
+Sambil nunggu hasilnya, saya tambahkan XssBrowserTest di main/tests.py, pakai pola Selenium yang sama dengan NavbarFunctionalTest. Tes ini membuat data berisi payload XSS, membuka halaman, lalu mengecek tiga hal:
+
+window.__xss tetap undefined, artinya script tidak jalan.
+Teks kartu menampilkan <img apa adanya.
+Untuk proyek dengan URL javascript:, tidak ada link yang href-nya diawali javascript:.
+Hasilnya akan saya laporkan begitu background-nya selesai.
+
+
+
+Bash Read the XSS browser test results
+IN
+cat "C:\Users\MZIDA_~1\AppData\Local\Temp\claude\c--Users-mzida-yqzansz-Projects-academic-pbp-pbp-tutorial-0\8a3d0915-552e-4440-86a3-b298eaebb2d7\tasks\b371eqdap.output" | tail -30
+
+OUT
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying main.0001_initial... OK
+  Applying main.0002_project... OK
+  Applying main.0003_alter_project_category... OK
+  Applying main.0004_project_starred_by... OK
+  Applying main.0005_experience_starred_by... OK
+  Applying sessions.0001_initial...test_experience_card_escapes_title (main.tests.XssBrowserTest.test_experience_card_escapes_title) ... ok
+test_project_card_escapes_name_and_blocks_javascript_url (main.tests.XssBrowserTest.test_project_card_escapes_name_and_blocks_javascript_url) ... ok
+[05/Oct/2026 20:59:49,402] - Broken pipe from ('127.0.0.1', 58540)
+[05/Oct/2026 20:59:49,402] - Broken pipe from ('127.0.0.1', 59624)
+
+----------------------------------------------------------------------
+Ran 2 tests in 5.852s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+ OK
+System check identified no issues (0 silenced).
+
+[exited with code 0]
+Kedua tes Selenium XSS lulus.
+
+test_project_card_escapes_name_and_blocks_javascript_url: payload di nama proyek tidak menjalankan script, teksnya tampil apa adanya, dan tidak ada link dengan href javascript:.
+test_experience_card_escapes_title: payload di judul experience tidak menjalankan script, dan teksnya tampil apa adanya.
+Catatan: tes ini membuktikan escaping dan safeUrl bekerja di browser. Untuk sanity check, saya belum mencoba menonaktifkan escaping untuk memastikan tes ini memang gagal saat seharusnya gagal.
