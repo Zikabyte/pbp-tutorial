@@ -707,3 +707,114 @@ Kedua tes Selenium XSS lulus.
 test_project_card_escapes_name_and_blocks_javascript_url: payload di nama proyek tidak menjalankan script, teksnya tampil apa adanya, dan tidak ada link dengan href javascript:.
 test_experience_card_escapes_title: payload di judul experience tidak menjalankan script, dan teksnya tampil apa adanya.
 Catatan: tes ini membuktikan escaping dan safeUrl bekerja di browser. Untuk sanity check, saya belum mencoba menonaktifkan escaping untuk memastikan tes ini memang gagal saat seharusnya gagal.
+Oh ya cik, aku minta tolong di modal itu ternyata pas darkmode teksnya masih hitam, stylingnya tolong perhatikan yh
+Saya cek dulu warna yang dipakai browser, jangan asal tebak.
+
+
+
+Bash Inspect computed colors of modal elements in dark mode
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.contrib.auth.models import User
+u,_=User.objects.get_or_create(username='_tmp_modal_css', is_superuser=True, is_staff=True); u.set_password('x12345678'); u.save(); print('ok')
+" 2>&1 | grep -v '^\['; (./.venv/Scripts/python.exe manage.py runserver 8000 > /tmp/runserver.log 2>&1 &); sleep 3; ./.venv/Scripts/python.exe -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
+o=Options(); o.add_argument('--headless=new'); o.add_argument('--no-sandbox'); o.add_argument('--disable-dev-shm-usage')
+d=webdriver.Chrome(options=o); d.set_window_size(1300,900)
+d.get('http://127.0.0.1:8000/login/')
+d.find_element(By.NAME,'username').send_keys('_tmp_modal_css'); d.find_element(By.NAME,'password').send_keys('x12345678')
+d.find_element(By.XPATH,\"//button[@type='submit']\").click(); time.sleep(0.5)
+d.execute_script('localStorage.setItem(\"theme\",\"dark\"); document.documentElement.setAttribute(\"data-theme\",\"dark\");')
+d.get('http://127.0.0.1:8000/experience/'); time.sleep(0.8)
+d.execute_script('document.getElementById(\"add-experience-modal\").showPopover()'); time.sleep(0.4)
+js='''
+const q=(s)=>{const e=document.querySelector(s); if(!e) return null; const c=getComputedStyle(e); return {color:c.color,bg:c.backgroundColor};};
+return {
+ h2:q('#add-experience-modal h2'), label:q('#add-experience-modal label'),
+ input:q('#add-experience-modal input[name=title]'), textarea:q('#add-experience-modal textarea'),
+ select:q('#add-experience-modal select'), content:q('#add-experience-modal .project-form-modal__content'),
+ cancel:q('#add-experience-modal .button-secondary')};
+'''
+import json; print(json.dumps(d.execute_script(js), indent=1))
+d.quit()
+" ; ./.venv/Scripts/python.exe manage.py shell -c "
+from django.contrib.auth.models import User; User.objects.filter(username='_tmp_modal_css').delete(); print('cleaned')
+" 2>&1 | grep -v '^\['; pkill -f 'manage.py runserver' 2>/dev/null; echo done
+
+OUT
+Command did not complete within its 120s timeout and was moved to the background (ID: b33f6lt8k). Output is being written to: C:\Users\MZIDA_~1\AppData\Local\Temp\claude\c--Users-mzida-yqzansz-Projects-academic-pbp-pbp-tutorial-0\8a3d0915-552e-4440-86a3-b298eaebb2d7\tasks\b33f6lt8k.output. You will be notified when it completes. To check interim output, use Read on that file path.
+Bash Read the computed style inspection output
+IN
+cat "C:\Users\MZIDA_~1\AppData\Local\Temp\claude\c--Users-mzida-yqzansz-Projects-academic-pbp-pbp-tutorial-0\8a3d0915-552e-4440-86a3-b298eaebb2d7\tasks\b33f6lt8k.output"
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+ok
+Pengecekan warna masih jalan di background. Hasilnya akan saya laporkan begitu selesai, lalu saya perbaiki stylingnya sesuai temuan.
+
+
+
+Penyebabnya sudah ketemu. Browser memberi [popover] warna default CanvasText (hitam). Konten modal mewarisinya, jadi h2 dan label ikut hitam. Input-nya sudah benar karena punya warna sendiri. Toast juga pakai popover dan color: inherit, jadi kemungkinan punya masalah yang sama.
+
+
+
+Bash Set explicit text color on modal and toast popovers to fix black text in dark mode
+IN
+python3 - <<'EOF'
+import re
+p = "static/css/_project-form.css"
+s = open(p, encoding="utf-8").read()
+old = ".project-form-modal {\n\tdisplay: none;"
+assert s.count(old) == 1, "modal block not found"
+s = s.replace(old, ".project-form-modal {\n\tdisplay: none;\n\tcolor: var(--ink);")
+old_c = ".project-form-modal__content {\n\tposition: relative;"
+assert s.count(old_c) == 1
+s = s.replace(old_c, ".project-form-modal__content {\n\tposition: relative;\n\tcolor: var(--ink);")
+open(p, "w", encoding="utf-8").write(s)
+
+p = "static/css/_toast.css"
+s = open(p, encoding="utf-8").read()
+assert s.count("\tcolor: inherit;") == 1
+s = s.replace("\tcolor: inherit;", "\tcolor: var(--ink);")
+open(p, "w", encoding="utf-8").write(s)
+print("ok")
+EOF
+grep -n "color: var(--ink)" static/css/_project-form.css static/css/_toast.css
+
+OUT
+ok
+static/css/_project-form.css:3:	color: var(--ink);
+static/css/_project-form.css:36:	color: var(--ink);
+static/css/_toast.css:17:	color: var(--ink);
+Sekarang saya cek ulang di browser dengan pengukuran yang sama.
+
+
+
+Bash Re-check modal heading and label colors in dark mode after the CSS fix
+Reason: BIAR AKU AJA YANG MERIKSA, LAMA BANGET SOALNYA KAMU
+IN
+./.venv/Scripts/python.exe manage.py shell -c "
+from django.contrib.auth.models import User
+u,_=User.objects.get_or_create(username='_tmp_modal_css', is_superuser=True, is_staff=True); u.set_password('x12345678'); u.save()
+" 2>&1 | grep -v '^\['; (./.venv/Scripts/python.exe manage.py runserver 8000 > /tmp/runserver.log 2>&1 &); sleep 3; ./.venv/Scripts/python.exe -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time, json
+o=Options(); o.add_argument('--headless=new'); o.add_argument('--no-sandbox'); o.add_argument('--disable-dev-shm-usage')
+d=webdriver.Chrome(options=o); d.set_window_size(1300,900)
+d.get('http://127.0.0.1:8000/login/')
+d.find_element(By.NAME,'username').send_keys('_tmp_modal_css'); d.find_element(By.NAME,'password').send_keys('x12345678')
+d.find_element(By.XPATH,\"//button[@type='submit']\").click(); time.sleep(0.5)
+d.execute_script('localStorage.setItem(\"theme\",\"dark\"); document.documentElement.setAttribute(\"data-theme\",\"dark\");')
+d.get('http://127.0.0.1:8000/experience/'); time.sleep(0.8)
+d.execute_script('document.getElementById(\"add-experience-modal\").showPopover()'); time.sleep(0.4)
+print(json.dumps(d.execute_script('''const q=(s)=>getComputedStyle(document.querySelector(s)).color; return {h2:q(\"#add-experience-modal h2\"), label:q(\"#add-experience-modal label\")};'''))) 
+d.quit()
+" ; ./.venv/Scripts/python.exe manage.py shell -c "
+from django.contrib.auth.models import User; User.objects.filter(username='_tmp_modal_css').delete(); print('cleaned')
+" 2>&1 | grep -v '^\['; pkill -f 'manage.py runserver' 2>/dev/null; echo done

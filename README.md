@@ -182,3 +182,25 @@ Seperti tugas sebelumnya, AI digunakan terutama untuk tugas repetitif (seperti w
    > Karena `Promise` tidak ditunggu untuk menjadi `Response` terlebih dahulu, data yang diharapkan ada pada hasil `fetch()` akan menghasilkan behaviour tidak terdefinisi karena pada saat ini data belum exist pada objek `Promise`, alhasil menghasilkan runtime error atau mengembalikan value `undefined`.
 
 3. Cross-Site Scripting (XSS) adalah jenis serangan keamanan di mana penyerang berhasil menyisipkan skrip eksploitatif (biasanya berupa skrip JavaScript) ke dalam input atau bentuk konten lainnya yang ditampilkan oleh situs web target penyerangan. Karena Django pada dasarnya merupakan framework yang sangat "batteries-included", engine pada Django secara default sudah menerapkan pencegahan XSS seperti menerapkan auto-escaping (mengubah karakter khusus HTML menjadi bentuk HTML entities, seperti `<` menjadi `&lt;`). Dengan AJAX, implementasinya seringkali memasukkan string HTML ke dalam DOM menggunakan properti `innerHTML`, yang secara mentah-mentah meletakkan string pada HTML, mau dia akan dieksekusi sebagai elemen HTML atau tidak. Oleh karena itu, developer harus mensanitasi input atau menggunakan properti yang aman dari code execution seperti `textContent`/`innerText`.
+
+#### AI Disclosure: Tugas 5
+
+As usual, AI digunakan terutama untuk tugas repetitif (seperti writing tests), styling fixes, dan debugging.
+
+##### Tools yang Digunakan
+
+- Claude Code: digunakan untuk membantu styling, debugging, dan write unit tests.
+
+> Catatan: Log penggunaan Claude Code disediakan di folder `logs/`
+
+##### Bagian Spesifik yang Dibantu AI
+
+1. Write unit test untuk input sanitization, AJAX, and XSS protection.
+2. Debugging
+3. Penyesuaian dark mode dengan styling modal
+
+##### Strategi Prompting
+
+- Menjalankan Claude Code dalam manual approval mode (bukan auto-accept), sehingga setiap perubahan/edit yang diajukan AI harus ditinjau dan disetujui secara eksplisit satu per satu.
+- Semua kode hasil AI ditinjau dan diuji secara manual sebelum di-commit.
+- Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).
