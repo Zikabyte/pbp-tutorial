@@ -47,6 +47,21 @@ function displayPageSection({
 	gridContainer.classList.toggle("hide", !showGrid);
 }
 
+// Mencegah teks dari data disisipkan sebagai HTML
+function escapeHtml(value) {
+	return String(value ?? "")
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+function safeUrl(value) {
+	const url = String(value ?? "").trim();
+	return /^(https?:\/\/|\/)/i.test(url) ? escapeHtml(url) : "";
+}
+
 // Membangun URL detail (delete/star) dari template URL dummy UUID
 function buildDetailUrl(template, projectId) {
 	return template.replace("00000000-0000-0000-0000-000000000000", projectId);
@@ -62,11 +77,11 @@ function buildProjectCardElement(item) {
 	articleElement.className = "experience-card";
 
 	const imageHtml = project.image_url
-		? `<img src="${project.image_url}" alt="Gambar ${project.name}" class="project-image">`
+		? `<img src="${safeUrl(project.image_url)}" alt="Gambar ${escapeHtml(project.name)}" class="project-image">`
 		: "";
 
 	const urlHtml = project.project_url
-		? `<a href="${project.project_url}" class="button">Lihat Project</a>`
+		? `<a href="${safeUrl(project.project_url)}" class="button">Lihat Project</a>`
 		: "";
 
 	const deleteUrl = buildDetailUrl(PROJECT_CONFIG.deleteUrlTemplate, projectId);
@@ -74,7 +89,7 @@ function buildProjectCardElement(item) {
 
 	const deleteHtml = IS_SUPERUSER
 		? `<form method="post" action="${deleteUrl}" style="display:inline;">
-                <input type="hidden" name="csrfmiddlewaretoken" value="${csrftoken}">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${escapeHtml(csrftoken)}">
                 <button type="submit" class="button button-danger" onclick="return confirm('Yakin ingin menghapus project ini?');">Hapus</button>
             </form>`
 		: "";
@@ -83,21 +98,21 @@ function buildProjectCardElement(item) {
 	const starText = project.is_starred ? "Unstar" : "Star";
 	const starTitle =
 		project.star_count > 0 && project.starred_by_names
-			? `Dibintangi oleh ${project.starred_by_names}`
+			? `Dibintangi oleh ${escapeHtml(project.starred_by_names)}`
 			: "Jadilah yang pertama memberi star";
 
 	// Komponen card
 	const completeCardHtml = `
             ${imageHtml}
-            <h2>${project.name}</h2>
-            <span class="experience-category">${project.category}</span>
-            <p class="experience-description">${project.description}</p>
+            <h2>${escapeHtml(project.name)}</h2>
+            <span class="experience-category">${escapeHtml(project.category)}</span>
+            <p class="experience-description">${escapeHtml(project.description)}</p>
             <div class="project-card-actions">
                 <div class="project-actions">
                     ${urlHtml}
 
                     <form method="post" action="${starUrl}" class="star-form">
-                        <input type="hidden" name="csrfmiddlewaretoken" value="${csrftoken}">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${escapeHtml(csrftoken)}">
                         <button type="submit"
                                 class="button button-star${isStarredClass}"
                                 title="${starTitle}">
