@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from main.models import Project
 from main.permissions import IsPortfolioOwnerOrReadOnly
 from main.serializers import ProjectSerializer
+from main.views import PROJECT_SORT_OPTIONS
 
 
 @api_view(["GET", "HEAD", "POST"])
@@ -17,10 +18,24 @@ from main.serializers import ProjectSerializer
 @permission_classes([IsPortfolioOwnerOrReadOnly])
 def project_list(request):
     if request.method in ("GET", "HEAD"):
-        projects = Project.objects.prefetch_related("starred_by").order_by("name", "id")
+        projects = Project.objects.prefetch_related("starred_by")
+
         title = request.query_params.get("title", "").strip()
         if title:
             projects = projects.filter(name__icontains=title)
+
+        category = request.query_params.get("category", "").strip()
+        if category:
+            projects = projects.filter(category=category)
+
+        if request.query_params.get("starred") == "1" and request.user.is_authenticated:
+            projects = projects.filter(starred_by=request.user)
+
+        sort = request.query_params.get("sort", "name").strip()
+        if sort not in PROJECT_SORT_OPTIONS:
+            sort = "name"
+        projects = projects.order_by(sort, "id")
+
         serializer = ProjectSerializer(
             projects, many=True, context={"request": request},
         )
