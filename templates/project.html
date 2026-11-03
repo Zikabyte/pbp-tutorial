@@ -201,9 +201,13 @@
 		button.disabled = true;
 		try {
 			const fields = new FormData(projectForm);
-			const payload = Object.fromEntries([
-				'title', 'description', 'tech_stack', 'project_url', 'project_image_url',
-			].map(name => [name, fields.get(name)]));
+			const payload = {
+				title: fields.get('name'),
+				description: fields.get('description'),
+				tech_stack: fields.get('category'),
+				project_url: fields.get('project_url'),
+				project_image_url: fields.get('image_url'),
+			};
 			await writeProject(BASE_PROJECTS_ENDPOINT, 'POST', payload);
 			projectForm.reset();
 			document.getElementById('add-project-modal').hidePopover();
