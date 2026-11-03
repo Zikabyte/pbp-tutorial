@@ -1,13 +1,19 @@
+import re
+
 from django.utils.html import strip_tags
 from rest_framework import serializers
 
 from main.models import Project
 
+SAFE_URL_RE = re.compile(r"^(https?://|/)", re.IGNORECASE)
+
 
 class ProjectSerializer(serializers.ModelSerializer):
     title = serializers.CharField(source="name")
     tech_stack = serializers.CharField(source="category")
-    project_image_url = serializers.CharField(source="image_url", required=False, allow_null=True)
+    project_image_url = serializers.CharField(
+        source="image_url", required=False, allow_null=True, allow_blank=True,
+    )
     star_count = serializers.SerializerMethodField()
     is_starred = serializers.SerializerMethodField()
     starred_by_names = serializers.SerializerMethodField()
@@ -32,6 +38,18 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def validate_tech_stack(self, value):
         return strip_tags(value)
+
+    def _validate_safe_url(self, value):
+        value = (value or "").strip()
+        if value and not SAFE_URL_RE.match(value):
+            raise serializers.ValidationError("Must be an http(s) URL.")
+        return value
+
+    def validate_project_url(self, value):
+        return self._validate_safe_url(value)
+
+    def validate_project_image_url(self, value):
+        return self._validate_safe_url(value)
 
     def get_star_count(self, obj):
         return obj.starred_by.count()
