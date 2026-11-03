@@ -868,7 +868,7 @@ class AjaxPageConfigTest(TestCase):
 
         response = self.client.get(reverse("main:show_projects"))
 
-        self.assertContains(response, "isSuperuser: false,")
+        self.assertContains(response, 'const IS_SUPERUSER = "false" === "true";')
 
     def test_show_experience_ignores_starred_filter_for_anonymous(self):
         response = self.client.get(reverse("main:show_experience"), {"starred": "1"})

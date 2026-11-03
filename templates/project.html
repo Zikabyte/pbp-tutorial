@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load static %}
 {% block title %}Zikafolio - Project{% endblock %}
 {% block content %}
 <section class="projects" id="projects">
@@ -74,14 +73,186 @@
     {% include "components/project_form_modal.html" %}
 {% endif %}
 
+{% csrf_token %}
 <script>
-	const PROJECT_CONFIG = {
-		projectsEndpoint: "{% url 'main:get_projects_json' %}",
-		createEndpoint: "{% url 'main:create_project_ajax' %}",
-		deleteUrlTemplate: "{% url 'main:delete_project' '00000000-0000-0000-0000-000000000000' %}",
-		starUrlTemplate: "{% url 'main:toggle_project_star' '00000000-0000-0000-0000-000000000000' %}",
-		isSuperuser: {{ user.is_superuser|yesno:"true,false" }},
-	};
+	const BASE_PROJECTS_ENDPOINT = "{% url 'api:project-list' %}";
+	const DETAIL_PROJECT_ENDPOINT = "{% url 'api:project-detail' '00000000-0000-0000-0000-000000000000' %}";
+	const STAR_PROJECT_ENDPOINT = "{% url 'api:project-star' '00000000-0000-0000-0000-000000000000' %}";
+	const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+	const IS_AUTHENTICATED = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
+
+	const loadingState = document.getElementById('loading');
+	const errorState = document.getElementById('error');
+	const emptyState = document.getElementById('empty');
+	const gridContainer = document.getElementById('grid');
+	const searchForm = document.getElementById('project-search-form');
+	const searchInput = document.getElementById('search-input');
+	const categorySelect = document.getElementById('category-select');
+	const sortSelect = document.getElementById('sort-select');
+	const starredFilter = document.getElementById('starred-filter');
+	const projectForm = document.getElementById('project-form');
+	let projectsAbortController;
+	let searchDebounceTimer;
+
+	function getCookie(name) {
+		const prefix = `${name}=`;
+		const cookie = document.cookie.split(';').map(value => value.trim())
+			.find(value => value.startsWith(prefix));
+		return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+	}
+
+	function escapeHtml(value) {
+		return String(value ?? '').replaceAll('&', '&amp;')
+			.replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+			.replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+	}
+
+	function safeUrl(value) {
+		const url = String(value ?? '').trim();
+		return /^(https?:\/\/|\/)/i.test(url) ? escapeHtml(url) : '';
+	}
+
+	function projectEndpoint(pattern, id) {
+		return pattern.replace('00000000-0000-0000-0000-000000000000', id);
+	}
+
+	function displayPageSection({ showLoading = false, showError = false,
+		showEmpty = false, showGrid = false }) {
+		loadingState.classList.toggle('hide', !showLoading);
+		errorState.classList.toggle('hide', !showError);
+		emptyState.classList.toggle('hide', !showEmpty);
+		gridContainer.classList.toggle('hide', !showGrid);
+	}
+
+	function buildProjectCardElement(project) {
+		const article = document.createElement('article');
+		article.className = 'experience-card';
+		const image = safeUrl(project.project_image_url)
+			? `<img src="${safeUrl(project.project_image_url)}" alt="${escapeHtml(project.title)}" class="project-image">` : '';
+		const link = safeUrl(project.project_url)
+			? `<a href="${safeUrl(project.project_url)}" class="button">Open project</a>` : '';
+		const star = IS_AUTHENTICATED
+			? `<button type="button" class="button button-star${project.is_starred ? ' is-starred' : ''}"
+				data-action="star" data-id="${escapeHtml(project.id)}"
+				title="${escapeHtml(project.starred_by_names)}">
+				${project.is_starred ? 'Unstar' : 'Star'} (${project.star_count})</button>`
+			: `<a href="{% url 'main:login' %}" class="button">Login to star (${project.star_count})</a>`;
+		const remove = IS_SUPERUSER
+			? `<button type="button" class="button button-danger" data-action="delete"
+				data-id="${escapeHtml(project.id)}">Delete</button>` : '';
+		article.innerHTML = `${image}<h2>${escapeHtml(project.title)}</h2>
+			<span class="experience-category">${escapeHtml(project.tech_stack)}</span>
+			<p class="experience-description">${escapeHtml(project.description)}</p>
+			<div class="project-card-actions"><div class="project-actions">
+			${link}${star}${remove}</div></div>`;
+		return article;
+	}
+
+	async function fetchProjects() {
+		if (projectsAbortController) projectsAbortController.abort();
+		projectsAbortController = new AbortController();
+		try {
+			displayPageSection({ showLoading: true });
+			const url = new URL(BASE_PROJECTS_ENDPOINT, window.location.origin);
+			const searchQuery = searchInput.value.trim();
+			if (searchQuery) url.searchParams.set('title', searchQuery);
+			if (categorySelect.value) url.searchParams.set('category', categorySelect.value);
+			if (sortSelect.value) url.searchParams.set('sort', sortSelect.value);
+			if (starredFilter && starredFilter.checked) url.searchParams.set('starred', '1');
+			const response = await fetch(url, {
+				headers: { Accept: 'application/json' },
+				signal: projectsAbortController.signal,
+			});
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const projects = await response.json();
+			gridContainer.replaceChildren(...projects.map(buildProjectCardElement));
+			displayPageSection({ showGrid: projects.length > 0, showEmpty: projects.length === 0 });
+		} catch (error) {
+			if (error.name === 'AbortError') return;
+			console.error(error);
+			displayPageSection({ showError: true });
+		}
+	}
+
+	function apiErrorMessage(data, status) {
+		const messages = Object.values(data).flat().filter(value => typeof value === 'string');
+		return messages.join(' ') || `Request failed (HTTP ${status}).`;
+	}
+
+	async function writeProject(url, method, payload) {
+		const response = await fetch(url, {
+			method,
+			headers: {
+				Accept: 'application/json',
+				'Content-Type': 'application/json',
+				'X-CSRFToken': getCookie('csrftoken'),
+			},
+			body: payload === undefined ? undefined : JSON.stringify(payload),
+		});
+		if (response.status === 204) return null;
+		const data = await response.json().catch(() => ({}));
+		if (!response.ok) throw new Error(apiErrorMessage(data, response.status));
+		return data;
+	}
+
+	async function addProject(event) {
+		event.preventDefault();
+		const button = projectForm.querySelector('button[type="submit"]');
+		button.disabled = true;
+		try {
+			const fields = new FormData(projectForm);
+			const payload = {
+				title: fields.get('name'),
+				description: fields.get('description'),
+				tech_stack: fields.get('category'),
+				project_url: fields.get('project_url'),
+				project_image_url: fields.get('image_url'),
+			};
+			await writeProject(BASE_PROJECTS_ENDPOINT, 'POST', payload);
+			projectForm.reset();
+			document.getElementById('add-project-modal').hidePopover();
+			showToast('Success', 'Project created.', 'success');
+			await fetchProjects();
+		} catch (error) {
+			showToast('Could not create project', error.message, 'error');
+		} finally {
+			button.disabled = false;
+		}
+	}
+
+	if (projectForm) projectForm.addEventListener('submit', addProject);
+
+	gridContainer.addEventListener('click', async function(event) {
+		const button = event.target.closest('button[data-action]');
+		if (!button || button.disabled) return;
+		const action = button.dataset.action;
+		if (action === 'delete' && !window.confirm('Delete this project?')) return;
+		button.disabled = true;
+		try {
+			const pattern = action === 'star' ? STAR_PROJECT_ENDPOINT : DETAIL_PROJECT_ENDPOINT;
+			await writeProject(projectEndpoint(pattern, button.dataset.id),
+				action === 'star' ? 'POST' : 'DELETE');
+			showToast('Success', action === 'star' ? 'Star updated.' : 'Project deleted.', 'success');
+			await fetchProjects();
+		} catch (error) {
+			showToast('Request failed', error.message, 'error');
+		} finally {
+			button.disabled = false;
+		}
+	});
+
+	searchInput.addEventListener('input', function() {
+		clearTimeout(searchDebounceTimer);
+		searchDebounceTimer = setTimeout(fetchProjects, 300);
+	});
+	searchForm.addEventListener('submit', function(event) {
+		event.preventDefault();
+		clearTimeout(searchDebounceTimer);
+		fetchProjects();
+	});
+	categorySelect.addEventListener('change', fetchProjects);
+	sortSelect.addEventListener('change', fetchProjects);
+	if (starredFilter) starredFilter.addEventListener('change', fetchProjects);
+	fetchProjects();
 </script>
-<script src="{% static 'js/project.js' %}"></script>
 {% endblock %}
