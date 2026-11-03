@@ -7,3 +7,4 @@ urllib3
 python-dotenv
 coverage
 selenium
+djangorestframework~=3.18.3
