@@ -7,10 +7,10 @@ from rest_framework.decorators import (
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from main.models import Project
+from main.models import Experience, Project
 from main.permissions import IsPortfolioOwnerOrEditorOrReadOnly
-from main.serializers import ProjectSerializer
-from main.views import PROJECT_SORT_OPTIONS
+from main.serializers import ExperienceSerializer, ProjectSerializer
+from main.views import EXPERIENCE_SORT_OPTIONS, PROJECT_SORT_OPTIONS
 
 
 @api_view(["GET", "HEAD", "POST"])
@@ -80,3 +80,36 @@ def project_star(request, project_id):
         project.starred_by.add(request.user)
     serializer = ProjectSerializer(project, context={"request": request})
     return Response(serializer.data)
+
+@api_view(["GET", "HEAD", "POST"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsPortfolioOwnerOrEditorOrReadOnly])
+def experience_list(request):
+    if request.method in ("GET", "HEAD"):
+        experiences = Experience.objects.prefetch_related("starred_by")
+
+        title = request.query_params.get("title", "").strip()
+        if title:
+            experiences = experiences.filter(title__icontains=title)
+
+        category = request.query_params.get("category", "").strip()
+        if category:
+            experiences = experiences.filter(category=category)
+
+        if request.query_params.get("starred") == "1" and request.user.is_authenticated:
+            experiences = experiences.filter(starred_by=request.user)
+
+        sort = request.query_params.get("sort", "title").strip()
+        if sort not in EXPERIENCE_SORT_OPTIONS:
+            sort = "title"
+        experiences = experiences.order_by(sort, "id")
+
+        serializer = ExperienceSerializer(
+            experiences, many=True, context={"request": request},
+        )
+        return Response(serializer.data)
+
+    serializer = ExperienceSerializer(data=request.data, context={"request": request})
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
