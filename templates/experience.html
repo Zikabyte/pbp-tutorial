@@ -74,12 +74,17 @@
     {% include "components/experience_form_modal.html" %}
 {% endif %}
 
+{% if can_edit %}
+    {% include "components/experience_edit_modal.html" %}
+{% endif %}
+
 <script>
 	const BASE_EXPERIENCES_ENDPOINT = "{% url 'api:experience-list' %}";
 	const DETAIL_EXPERIENCE_ENDPOINT = "{% url 'api:experience-detail' '00000000-0000-0000-0000-000000000000' %}";
 	const STAR_EXPERIENCE_ENDPOINT = "{% url 'api:experience-star' '00000000-0000-0000-0000-000000000000' %}";
 	const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
 	const IS_AUTHENTICATED = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
+	const CAN_EDIT = "{{ can_edit|yesno:'true,false' }}" === "true";
 
 	const loadingState = document.getElementById('loading');
 	const errorState = document.getElementById('error');
@@ -91,6 +96,7 @@
 	const sortSelect = document.getElementById('sort-select');
 	const starredFilter = document.getElementById('starred-filter');
 	const experienceForm = document.getElementById('experience-form');
+	const editExperienceForm = document.getElementById('edit-experience-form');
 	let experiencesAbortController;
 	let searchDebounceTimer;
 
@@ -129,6 +135,9 @@
 				title="${escapeHtml(experience.starred_by_names)}">
 				${experience.is_starred ? 'Unstar' : 'Star'} (${experience.star_count})</button>`
 			: `<a href="{% url 'main:login' %}" class="button">Login to star (${experience.star_count})</a>`;
+		const edit = CAN_EDIT
+			? `<button type="button" class="button button-secondary" data-action="edit"
+				data-id="${escapeHtml(experience.id)}">Edit</button>` : '';
 		const remove = IS_SUPERUSER
 			? `<button type="button" class="button button-danger" data-action="delete"
 				data-id="${escapeHtml(experience.id)}">Delete</button>` : '';
@@ -137,7 +146,7 @@
 			<h2>${escapeHtml(experience.title)}</h2>
 			<p class="experience-description">${escapeHtml(experience.description)}</p>
 			<p class="experience-status">${statusText}</p>
-			<div class="project-actions">${star}${remove}</div>
+			<div class="project-actions">${star}${edit}${remove}</div>
 		`;
 		return article;
 	}
@@ -217,10 +226,61 @@
 
 	if (experienceForm) experienceForm.addEventListener('submit', addExperience);
 
+	async function openEditExperienceModal(id) {
+		try {
+			const response = await fetch(experienceEndpoint(DETAIL_EXPERIENCE_ENDPOINT, id), {
+				headers: { Accept: 'application/json' },
+			});
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const experience = await response.json();
+			document.getElementById('edit-experience-id').value = id;
+			editExperienceForm.querySelector('[name=title]').value = experience.title;
+			editExperienceForm.querySelector('[name=description]').value = experience.description;
+			editExperienceForm.querySelector('[name=category]').value = experience.category;
+			editExperienceForm.querySelector('[name=thumbnail]').value = experience.thumbnail || '';
+			editExperienceForm.querySelector('[name=ended_at]').value = experience.ended_at
+				? experience.ended_at.slice(0, 10) : '';
+			document.getElementById('edit-experience-modal').showPopover();
+		} catch (error) {
+			showToast('Could not load experience', error.message, 'error');
+		}
+	}
+
+	async function updateExperience(event) {
+		event.preventDefault();
+		const id = document.getElementById('edit-experience-id').value;
+		const button = editExperienceForm.querySelector('button[type="submit"]');
+		button.disabled = true;
+		try {
+			const fields = new FormData(editExperienceForm);
+			const payload = {
+				title: fields.get('title'),
+				description: fields.get('description'),
+				category: fields.get('category'),
+				thumbnail: fields.get('thumbnail'),
+				ended_at: fields.get('ended_at') || null,
+			};
+			await writeExperience(experienceEndpoint(DETAIL_EXPERIENCE_ENDPOINT, id), 'PATCH', payload);
+			document.getElementById('edit-experience-modal').hidePopover();
+			showToast('Success', 'Experience updated.', 'success');
+			await fetchExperiences();
+		} catch (error) {
+			showToast('Could not update experience', error.message, 'error');
+		} finally {
+			button.disabled = false;
+		}
+	}
+
+	if (editExperienceForm) editExperienceForm.addEventListener('submit', updateExperience);
+
 	gridContainer.addEventListener('click', async function(event) {
 		const button = event.target.closest('button[data-action]');
 		if (!button || button.disabled) return;
 		const action = button.dataset.action;
+		if (action === 'edit') {
+			openEditExperienceModal(button.dataset.id);
+			return;
+		}
 		if (action === 'delete' && !window.confirm('Delete this experience?')) return;
 		button.disabled = true;
 		try {

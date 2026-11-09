@@ -194,6 +194,10 @@ def show_experience(request):
     if sort_query not in EXPERIENCE_SORT_OPTIONS:
         sort_query = "title"
     starred_query = request.GET.get("starred") == "1" and request.user.is_authenticated
+    can_edit = request.user.is_superuser or (
+        request.user.is_authenticated
+        and request.user.groups.filter(name="Editor").exists()
+    )
 
     context = {
         "name": "Mohammad Zidane Kurnianto",
@@ -203,6 +207,8 @@ def show_experience(request):
         "starred_query": starred_query,
         "category_choices": Experience.EXPERIENCE_CHOICES,
         "form": ExperienceForm(),
+        "edit_form": ExperienceForm(auto_id="edit_%s"),
+        "can_edit": can_edit,
     }
     return render(request, "experience.html", context)
 
