@@ -1,3 +1,31 @@
+uhhhh ini javascriptnya kenapa ya?
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+6:56 PM
+Found it — line 191:
+
+
+'X-CSRFToken': getCookie('csrftok'),
+The cookie name is misspelled — it should be 'csrftoken', not 'csrftok'. Since Django actually sets the cookie as csrftoken, getCookie('csrftok') always returns null, so every mutating request (add, edit/PATCH, star, delete) sends no CSRF token at all and gets rejected with a 403 by Django's CSRF middleware.
+
+
+
+
+Bash Check history of the csrftoken cookie name in experience.html
+IN
+cd "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0" && git log -p --follow -- templates/experience.html | grep -n "csrftok" 
+
+OUT
+252:+				'X-CSRFToken': getCookie('csrftoken'),
+6:56 PM
+Fixing the typo:
+
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\templates\experience.html
+Modified
+6:56 PM
+Fixed. That was the bug — CSRF validation was silently failing on every mutating request to the experience API.
+
 Tolong tuntaskan api tests dong, berdasarkan yang udh dibangun sejauh ini
 7:28 PM
 Before writing the validation test for thumbnail, let me confirm exactly how DRF's auto-generated URLField reacts to a bad scheme — I want the test's expected error to be accurate, not guessed.
