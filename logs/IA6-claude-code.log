@@ -1,0 +1,128 @@
+Tolong tuntaskan api tests dong, berdasarkan yang udh dibangun sejauh ini
+7:28 PM
+Before writing the validation test for thumbnail, let me confirm exactly how DRF's auto-generated URLField reacts to a bad scheme — I want the test's expected error to be accurate, not guessed.
+
+
+
+Bash Probe serializer validation behavior for thumbnail scheme, blank title, bad category
+IN
+cd "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0" && .venv/Scripts/python manage.py shell -c "
+from main.serializers import ExperienceSerializer
+s = ExperienceSerializer(data={'title': 'T', 'description': 'D', 'category': 'internship', 'thumbnail': 'javascript:alert(1)'})
+print(s.is_valid())
+print(s.errors)
+s2 = ExperienceSerializer(data={'title': 'T', 'description': 'D', 'category': 'internship'})
+print(s2.is_valid())
+print(s2.errors)
+s3 = ExperienceSerializer(data={'title': '   ', 'description': 'D', 'category': 'internship'})
+print(s3.is_valid())
+print(s3.errors)
+s4 = ExperienceSerializer(data={'title': '<b>x</b>', 'description': 'D', 'category': 'bogus-category'})
+print(s4.is_valid())
+print(s4.errors)
+"
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+False
+{'thumbnail': [ErrorDetail(string='Enter a valid URL.', code='invalid')]}
+True
+{}
+False
+{'title': [ErrorDetail(string='This field may not be blank.', code='blank')]}
+False
+{'category': [ErrorDetail(string='"bogus-category" is not a valid choice.', code='invalid_choice')]}
+Bash Confirm validate_title catches tags-only input after stripping
+IN
+cd "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0" && .venv/Scripts/python manage.py shell -c "
+from main.serializers import ExperienceSerializer
+s = ExperienceSerializer(data={'title': '<img src=\"x\" onerror=\"alert(1)\">', 'description': 'D', 'category': 'internship'})
+print(s.is_valid())
+print(s.errors)
+"
+
+OUT
+14 objects imported automatically (use -v 2 for details).
+
+False
+{'title': [ErrorDetail(string='Title cannot be empty.', code='invalid')]}
+7:28 PM
+Confirmed. Now writing the full ExperienceAPITest suite, mirroring ProjectAPITest's structure exactly.
+
+
+
+Read C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests_api.py
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests_api.py
+Modified
+7:29 PM
+Now appending the full ExperienceAPITest class to the end of the file:
+
+
+
+Edit C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0\main\tests_api.py
+Added 145 lines
+Bash Run the new Experience API test suite
+IN
+cd "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0" && .venv/Scripts/python manage.py test main.tests_api.ExperienceAPITest -v 2 2>&1 | tail -40
+
+OUT
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying main.0001_initial... OK
+  Applying main.0002_project... OK
+  Applying main.0003_alter_project_category... OK
+  Applying main.0004_project_starred_by... OK
+  Applying main.0005_experience_starred_by... OK
+  Applying sessions.0001_initial...test_computed_fields_are_read_only (main.tests_api.ExperienceAPITest.test_computed_fields_are_read_only) ... ok
+test_editor_can_update_but_not_create_or_delete (main.tests_api.ExperienceAPITest.test_editor_can_update_but_not_create_or_delete) ... ok
+test_guest_and_visitor_cannot_write (main.tests_api.ExperienceAPITest.test_guest_and_visitor_cannot_write) ... ok
+test_missing_experience (main.tests_api.ExperienceAPITest.test_missing_experience) ... ok
+test_owner_can_create (main.tests_api.ExperienceAPITest.test_owner_can_create) ... ok
+test_patch_put_and_delete (main.tests_api.ExperienceAPITest.test_patch_put_and_delete) ... ok
+test_public_list_and_detail (main.tests_api.ExperienceAPITest.test_public_list_and_detail) ... ok
+test_search_and_empty_results (main.tests_api.ExperienceAPITest.test_search_and_empty_results) ... ok
+test_session_write_with_csrf_succeeds (main.tests_api.ExperienceAPITest.test_session_write_with_csrf_succeeds) ... ok
+test_session_write_without_csrf_is_rejected (main.tests_api.ExperienceAPITest.test_session_write_without_csrf_is_rejected) ... ok
+test_star_requires_login_and_toggles (main.tests_api.ExperienceAPITest.test_star_requires_login_and_toggles) ... ok
+test_validation (main.tests_api.ExperienceAPITest.test_validation) ... ok
+test_wrong_method (main.tests_api.ExperienceAPITest.test_wrong_method) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 16.787s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+ OK
+System check identified no issues (0 silenced).
+7:29 PM
+All 13 pass on the first try. Now running the full suite (main, not bare manage.py test, per the hint about the Selenium test_e2e.py trap) to confirm nothing else regressed.
+
+
+
+Bash Run full test suite including new Experience API tests
+IN
+cd "C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0" && .venv/Scripts/python manage.py test main -v 1 2>&1 | tail -15
+
+OUT
+Command running in background with ID: bvm5gr4g8. Output is being written to: C:\Users\MZIDA_~1\AppData\Local\Temp\claude\df505ea35928d3b6\023e3af9-5446-4422-b1d6-9064f94de63b\tasks\bvm5gr4g8.output. You will be notified when it completes — do not poll that file or sleep while waiting. Read the file only if the user asks for progress, or if you need a line it prints before you can go on, such as a server's ready line or port.
+Session cwd remains C:\Users\mzida_yqzansz\Projects\academic\pbp\pbp-tutorial-0; directory changes made by the backgrounded command do not apply to subsequent commands.
+
+
+
+Read C:\Users\MZIDA_~1\AppData\Local\Temp\claude\df505ea35928d3b6\023e3af9-5446-4422-b1d6-9064f94de63b\tasks\bvm5gr4g8.output
+7:32 PM
+All 119 tests pass (106 existing + 13 new). Increment 6 complete: ExperienceAPITest mirrors ProjectAPITest exactly — public read, search, 404, guest/visitor write-denial (checked against actual DB content, not just status), validation (blank title, stripped-tag title, bad category choice, javascript: thumbnail scheme), PATCH/PUT/DELETE, star toggle + anonymous rejection, read-only computed fields, Editor PATCH-but-not-create/delete, 405 on wrong method, and both CSRF cases via APIClient(enforce_csrf_checks=True) + .login().
