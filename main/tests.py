@@ -852,16 +852,14 @@ class AjaxPageConfigTest(TestCase):
 
         response = self.client.get(reverse("main:show_experience"))
 
-        self.assertContains(response, "canChange: true,")
-        self.assertContains(response, "canDelete: true,")
+        self.assertContains(response, 'const IS_SUPERUSER = "true" === "true";')
 
     def test_experience_page_config_denies_delete_and_change_to_regular_user(self):
         self.client.login(username="cfg_regular", password="pass12345")
 
         response = self.client.get(reverse("main:show_experience"))
 
-        self.assertContains(response, "canChange: false,")
-        self.assertContains(response, "canDelete: false,")
+        self.assertContains(response, 'const IS_SUPERUSER = "false" === "true";')
 
     def test_project_page_config_reflects_superuser_flag(self):
         self.client.login(username="cfg_regular", password="pass12345")
