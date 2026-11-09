@@ -204,3 +204,43 @@ As usual, AI digunakan terutama untuk tugas repetitif (seperti writing tests), s
 - Menjalankan Claude Code dalam manual approval mode (bukan auto-accept), sehingga setiap perubahan/edit yang diajukan AI harus ditinjau dan disetujui secara eksplisit satu per satu.
 - Semua kode hasil AI ditinjau dan diuji secara manual sebelum di-commit.
 - Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).
+
+### Tugas 6
+
+1. REST (Representational State Transfer) adalah sebuah architectural style untuk membangun API, bukan sebuah protokol atau format data. REST mendefinisikan sekumpulan constraint yang harus dipatuhi, yaitu stateless (server tidak menyimpan state antar-request, setiap request harus membawa seluruh informasi yang dibutuhkan untuk diproses, seperti token/cookie auth), client-server separation, uniform interface (resource diakses lewat URI yang konsisten dan dimanipulasi lewat representasi seperti JSON), serta pemanfaatan method HTTP secara semantik.
+   Mengembalikan JSON saja belum membuat sebuah API disebut RESTful, karena JSON hanyalah format data, bukan arsitekturnya. Sebuah endpoint yang mengembalikan JSON tapi memakai URL seperti `/getAllProjects` atau `/doDeleteProject?id=1` lewat method `GET`, atau selalu membalas status `200 OK` dengan body `{"success": false}` ketika terjadi error, tetap bukan RESTful karena melanggar uniform interface dan tidak memanfaatkan status code HTTP secara semantik.
+
+   Perbedaan `PUT` dan `PATCH` terletak pada cakupan perubahan yang dilakukan. `PUT` mengganti representasi resource secara penuh, sehingga client idealnya mengirim seluruh field resource tersebut; field yang tidak disertakan bisa dianggap direset/invalid. `PATCH` melakukan partial update, hanya field yang dikirim yang diubah, field lainnya tetap seperti semula. Contohnya, mengedit seluruh profil user lewat form yang menyertakan semua field sekaligus lebih cocok pakai `PUT`, sedangkan hanya mengubah status `read`/`unread` sebuah notifikasi lebih cocok pakai `PATCH`.
+
+2. Serializer pada DRF berperan sebagai jembatan dua arah antara representasi internal Django (model instance/`QuerySet`) dan representasi eksternal yang dipahami client (JSON), sekaligus menjadi lapisan validasi input sebelum data tersebut disimpan ke database. Saat serialization, serializer menerjemahkan instance model menjadi struktur JSON-compatible, sementara saat deserialization, `is_valid()` memvalidasi data mentah dari client sebelum `save()` menerjemahkannya kembali menjadi perubahan pada model.
+
+   Dibanding merakit dictionary manual dengan `JsonResponse` seperti di Tugas 5, serializer lebih praktis karena field cukup didefinisikan sekali lewat `Meta.fields`, validasi tiap field (termasuk validasi custom) otomatis dijalankan saat `is_valid()`, dan representasi yang sama bisa dipakai konsisten untuk `GET`, `POST`, `PUT`, maupun `PATCH`, sehingga tidak perlu menulis ulang struktur dictionary berbeda-beda di setiap view.
+
+3. Autentikasi adalah proses memastikan identitas pengguna di balik sebuah request (pada proyek ini dilakukan lewat `SessionAuthentication`). Otorisasi adalah proses memeriksa apakah user yang sudah teridentifikasi tersebut benar-benar diizinkan melakukan aksi yang diminta. Pada proyek ini, otorisasi diimplementasikan lewat permission class seperti `IsPortfolioOwnerOrEditorOrReadOnly`.
+
+   Hak akses harus diperiksa di server lewat permission class, bukan hanya dengan menyembunyikan tombol di template, karena HTML dan JavaScript yang dikirim ke browser sepenuhnya dikendalikan pengguna. Siapapun tetap bisa memanggil endpoint API secara langsung lewat `curl` atau Postman tanpa pernah menyentuh tombol tersebut, sehingga server harus menjadi satu-satunya sumber kebenaran untuk authorization.
+
+4. Permintaan yang mengubah data tetap memerlukan token CSRF walaupun API memakai `SessionAuthentication`, karena cookie session dikirim otomatis oleh browser ke server pada setiap request ke domain yang sama, termasuk request yang tidak sengaja diinisiasi oleh pengguna sendiri. Tanpa proteksi tambahan, penyerang bisa membuat halaman di situs lain yang otomatis mengirim request (misalnya form tersembunyi yang auto-submit ke endpoint `DELETE` sebuah project) ke server kita, karena browser victim tetap menyertakan cookie session mereka yang sedang aktif, request palsu tersebut akan tampak "terautentikasi" secara sah di mata server meski pengguna sama sekali tidak bermaksud melakukannya. Inilah yang disebut Cross-Site Request Forgery (CSRF).
+
+   Test yang memakai `force_authenticate()` tidak cukup untuk membuktikan proteksi CSRF berjalan, karena fungsi ini menempelkan user ke request tanpa pernah melewati cookie session maupun middleware CSRF Django yang sesungguhnya, sehingga test seperti ini akan tetap lolos walaupun proteksi CSRF-nya sama sekali tidak aktif. Oleh karena itu, perlu test tambahan yang memakai `APIClient(enforce_csrf_checks=True)` dan `.login()`, supaya request benar-benar melewati jalur login dan middleware CSRF asli.
+
+#### AI Disclosure: Tugas 6
+
+As usual, AI digunakan terutama untuk tugas repetitif (seperti writing tests), debugging, dan boilerplating.
+
+##### Tools yang Digunakan
+
+- Claude Code: digunakan untuk membantu debugging dan write unit tests.
+
+> Catatan: Log penggunaan Claude Code disediakan di folder `logs/`
+
+##### Bagian Spesifik yang Dibantu AI
+
+1. Write unit test untuk API testing
+2. Debugging dan boilerplating JavaScript
+
+##### Strategi Prompting
+
+- Menjalankan Claude Code dalam manual approval mode (bukan auto-accept), sehingga setiap perubahan/edit yang diajukan AI harus ditinjau dan disetujui secara eksplisit satu per satu.
+- Semua kode hasil AI ditinjau dan diuji secara manual sebelum di-commit.
+- Mengerjakan feature yang diminta tugas sendiri (tanpa bantuan AI).
